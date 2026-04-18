@@ -24,7 +24,7 @@ def test_deploy_server_uses_plain_ssh_without_password(monkeypatch) -> None:
 	monkeypatch.setattr(release_deploy, "_run", fake_run)
 
 	release_deploy._deploy_server(
-		"vipcup@117.72.217.15",
+		"asset-tracker-aws",
 		"main",
 		"~/finance--tracker",
 		password=None,
@@ -34,7 +34,7 @@ def test_deploy_server_uses_plain_ssh_without_password(monkeypatch) -> None:
 		(
 			[
 				"ssh",
-				"vipcup@117.72.217.15",
+				"asset-tracker-aws",
 				release_deploy._build_remote_command("main", "~/finance--tracker"),
 			],
 			release_deploy.REPO_ROOT,
@@ -58,12 +58,12 @@ def test_deploy_server_uses_password_helper_when_password_present(monkeypatch) -
 	monkeypatch.setattr(release_deploy, "_deploy_server_with_password", fake_password_deploy)
 
 	release_deploy._deploy_server(
-		"vipcup@117.72.217.15",
+		"asset-tracker-aws",
 		"main",
 		"~/finance--tracker",
 		password="secret",
 	)
 
 	assert recorded_calls == [
-		("vipcup@117.72.217.15", "main", "~/finance--tracker", "secret"),
+		("asset-tracker-aws", "main", "~/finance--tracker", "secret"),
 	]

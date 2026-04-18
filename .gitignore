@@ -18,3 +18,5 @@ AGENTS.md
 .codex/
 .preview/
 .playwright-cli/
+nginx/letsencrypt/
+nginx/certbot/

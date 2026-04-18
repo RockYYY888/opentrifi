@@ -72,7 +72,7 @@ Notes:
 ### Example: Create An API Key For The Current Account
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/agent/tokens \
+curl -X POST http://127.0.0.1:80/api/agent/tokens \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <existing_api_key>' \
   -d '{
@@ -83,7 +83,7 @@ curl -X POST http://127.0.0.1:8080/api/agent/tokens \
 ### Example: Verify A Newly Issued API Key
 
 ```bash
-curl http://127.0.0.1:8080/api/auth/session \
+curl http://127.0.0.1:80/api/auth/session \
   -H 'Authorization: Bearer <access_token>'
 ```
 
@@ -520,7 +520,7 @@ If the same idempotency key is reused with a different request body, the backend
 ### Create A Buy Transaction
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/holding-transactions \
+curl -X POST http://127.0.0.1:80/api/holding-transactions \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Idempotency-Key: buy-aapl-20260324-001' \
@@ -542,7 +542,7 @@ curl -X POST http://127.0.0.1:8080/api/holding-transactions \
 ### Create A Cash Transfer
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/cash-transfers \
+curl -X POST http://127.0.0.1:80/api/cash-transfers \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Idempotency-Key: transfer-20260324-001' \
@@ -558,7 +558,7 @@ curl -X POST http://127.0.0.1:8080/api/cash-transfers \
 ### Create A Dashboard Correction
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/dashboard/corrections \
+curl -X POST http://127.0.0.1:80/api/dashboard/corrections \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <access_token>' \
   -d '{
@@ -574,7 +574,7 @@ curl -X POST http://127.0.0.1:8080/api/dashboard/corrections \
 ### Create A Liability Entry
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/liabilities \
+curl -X POST http://127.0.0.1:80/api/liabilities \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <access_token>' \
   -d '{
@@ -590,7 +590,7 @@ curl -X POST http://127.0.0.1:8080/api/liabilities \
 ### Submit A System Feedback Message
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/feedback \
+curl -X POST http://127.0.0.1:80/api/feedback \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Agent-Name: api-monitor-bot' \
@@ -607,7 +607,7 @@ curl -X POST http://127.0.0.1:8080/api/feedback \
 ### Publish A Changelog-Backed Release Note
 
 ```bash
-curl -X POST http://127.0.0.1:8080/api/admin/release-notes/publish-changelog \
+curl -X POST http://127.0.0.1:80/api/admin/release-notes/publish-changelog \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <access_token>' \
   -H 'Agent-Name: release-bot' \

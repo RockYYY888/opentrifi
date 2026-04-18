@@ -18,16 +18,13 @@ DEFAULT_BRANCH = "main"
 DEFAULT_SERVER_PATH = "~/finance--tracker"
 DEFAULT_DEPLOY_COMMAND = (
 	"docker compose -f docker-compose.yml -f docker-compose.production.yml "
-	"-f docker-compose.proxy.yml up -d --build --remove-orphans"
+	"up -d --build --remove-orphans"
 )
 DEFAULT_VERIFY_COMMAND = (
-	"docker compose -f docker-compose.yml -f docker-compose.production.yml "
-	"-f docker-compose.proxy.yml ps && "
-	"curl -fsS http://127.0.0.1:8080/api/health >/dev/null && "
-	"docker compose -f docker-compose.yml -f docker-compose.production.yml "
-	"-f docker-compose.proxy.yml exec -T redis redis-cli ping >/dev/null && "
-	"docker compose -f docker-compose.yml -f docker-compose.production.yml "
-	"-f docker-compose.proxy.yml exec -T postgres "
+	"docker compose -f docker-compose.yml -f docker-compose.production.yml ps && "
+	"curl -fsS http://127.0.0.1:80/api/health >/dev/null && "
+	"docker compose -f docker-compose.yml -f docker-compose.production.yml exec -T redis redis-cli ping >/dev/null && "
+	"docker compose -f docker-compose.yml -f docker-compose.production.yml exec -T postgres "
 	"sh -lc 'psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -c "
 	"\"select * from alembic_version;\"' >/dev/null"
 )

@@ -12,7 +12,7 @@ and performance history. Agent-facing API documentation lives in
 docker compose up -d --build --remove-orphans
 ```
 
-Open `http://127.0.0.1:8080`.
+Open `http://127.0.0.1:80`.
 This starts `backend`, `worker`, `frontend`, `nginx`, `postgres`, and `redis`.
 The local Postgres endpoint is also published at `127.0.0.1:5433` for direct host-side testing.
 The local Redis endpoint is also published at `127.0.0.1:6380` for direct host-side testing.
@@ -21,12 +21,11 @@ Local app data lives in the persistent Postgres database `asset_tracker`.
 Local nginx verification:
 
 ```bash
-curl -I http://127.0.0.1:8080/
-curl http://127.0.0.1:8080/api/health
+curl -I http://127.0.0.1:80/
+curl http://127.0.0.1:80/api/health
 ```
 
-If you previously ran the stack with `caddy`, keep `--remove-orphans` so the old container is removed
-and `nginx` can bind `127.0.0.1:8080` cleanly.
+Keep `--remove-orphans` so stale containers are removed before restarting this stack.
 
 ### Local Redis Connectivity Check
 
@@ -40,20 +39,10 @@ The runtime connectivity check exercises the real Postgres and Redis containers 
 Backend tests use a persistent local Postgres test database named `asset_tracker_test`; the database is
 kept, while test runs recreate its schema before each test for isolation.
 
-### Server Or Proxy Build
+### Server Deploy
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.proxy.yml up -d --build --remove-orphans
-```
-
-The proxy override file defaults to `http://host.docker.internal:7890`.
-
-If your local proxy listens on another port such as `10808`, override it explicitly:
-
-```bash
-ASSET_TRACKER_HTTP_PROXY=http://host.docker.internal:10808 \
-ASSET_TRACKER_HTTPS_PROXY=http://host.docker.internal:10808 \
-docker compose -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.proxy.yml up -d --build --remove-orphans
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d --build --remove-orphans
 ```
 
 `backend` and `worker` now run Alembic migrations automatically on startup. Schema changes must ship
@@ -82,7 +71,7 @@ Server deploy:
 ```bash
 git checkout main
 git pull --ff-only origin main
-docker compose -f docker-compose.yml -f docker-compose.production.yml -f docker-compose.proxy.yml up -d --build --remove-orphans
+docker compose -f docker-compose.yml -f docker-compose.production.yml up -d --build --remove-orphans
 ```
 
 Routine server updates should use the command above.
@@ -116,9 +105,9 @@ If the update touches `backend/alembic/versions/`, `backend/app/models.py`,
 
 Deploy startup automatically runs `alembic upgrade head`.
 
-If your remote host or external reverse proxy referenced the old `caddy` service by name, update it to
-the new `nginx` service. If the host only forwarded traffic to port `8080`, no extra host-level route
-change is required beyond pulling the latest code and rebuilding the compose stack.
+If your production host or external reverse proxy still points to a legacy upstream target, switch it to
+the `nginx` container service and expose your service on `80/443` with your domain (for example `opentrifi.duckdns.org`).
+After DNS/domain target is correct, pull the latest code and run the routine deploy command above.
 
 For Codex-assisted end-to-end releases, use the local
 `$asset-tracker-release-deploy-sop` skill or run the same script directly with

@@ -17,7 +17,7 @@ def test_parse_env_file_supports_quotes_export_and_comments(tmp_path: Path) -> N
 		"\n".join(
 			[
 				"# comment",
-				'ASSET_TRACKER_SERVER_SSH="vipcup@117.72.217.15"',
+				'ASSET_TRACKER_SERVER_SSH="asset-tracker-aws"',
 				"export ASSET_TRACKER_SERVER_PATH='~/finance--tracker'",
 				"ASSET_TRACKER_ADMIN_API_KEY=",
 			],
@@ -27,7 +27,7 @@ def test_parse_env_file_supports_quotes_export_and_comments(tmp_path: Path) -> N
 	)
 
 	assert release_env.parse_env_file(env_file) == {
-		"ASSET_TRACKER_SERVER_SSH": "vipcup@117.72.217.15",
+		"ASSET_TRACKER_SERVER_SSH": "asset-tracker-aws",
 		"ASSET_TRACKER_SERVER_PATH": "~/finance--tracker",
 		"ASSET_TRACKER_ADMIN_API_KEY": "",
 	}
@@ -39,14 +39,14 @@ def test_load_env_defaults_preserves_existing_environment(
 ) -> None:
 	env_file = tmp_path / ".env.release-deploy.local"
 	env_file.write_text(
-		'ASSET_TRACKER_SERVER_ORIGIN="http://117.72.217.15:8080"\n',
+		'ASSET_TRACKER_SERVER_ORIGIN="https://opentrifi.duckdns.org"\n',
 		encoding="utf-8",
 	)
 	monkeypatch.setenv("ASSET_TRACKER_SERVER_ORIGIN", "https://existing.example.com")
 
 	loaded_values = release_env.load_env_defaults(env_file)
 
-	assert loaded_values["ASSET_TRACKER_SERVER_ORIGIN"] == "http://117.72.217.15:8080"
+	assert loaded_values["ASSET_TRACKER_SERVER_ORIGIN"] == "https://opentrifi.duckdns.org"
 	assert release_env.get_env_value("ASSET_TRACKER_SERVER_ORIGIN") == "https://existing.example.com"
 
 

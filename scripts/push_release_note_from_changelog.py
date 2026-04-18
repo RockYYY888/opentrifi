@@ -225,7 +225,7 @@ def main(argv: list[str] | None = None) -> None:
 			"ASSET_TRACKER_SERVER_ORIGIN",
 			"FEEDBACK_API_BASE_URL",
 		),
-		help="Server origin, for example https://finance.example.com or http://127.0.0.1:8080",
+		help="Server origin, for example https://finance.example.com or http://127.0.0.1:80",
 	)
 	parser.add_argument(
 		"--admin-api-key",

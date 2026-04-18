@@ -99,8 +99,14 @@ services:
         condition: service_healthy
       frontend:
         condition: service_started
+    environment:
+      ASSET_TRACKER_DOMAIN: ${ASSET_TRACKER_DOMAIN}
     ports:
-      - "8080:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/letsencrypt:/etc/letsencrypt
+      - ./nginx/certbot:/var/www/certbot
     restart: unless-stopped
 
 volumes:

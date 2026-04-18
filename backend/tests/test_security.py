@@ -52,8 +52,8 @@ def test_settings_default_to_local_development() -> None:
 	assert settings.cors_origins() == [
 		"http://localhost:5173",
 		"http://127.0.0.1:5173",
-		"http://localhost:8080",
-		"http://127.0.0.1:8080",
+		"http://localhost:80",
+		"http://127.0.0.1:80",
 	]
 	assert settings.trusted_hosts() == ["localhost", "127.0.0.1"]
 
@@ -86,13 +86,13 @@ def test_settings_allow_non_secure_session_cookie_for_http_origin_in_production(
 	monkeypatch: pytest.MonkeyPatch,
 ) -> None:
 	monkeypatch.setenv("ASSET_TRACKER_APP_ENV", "production")
-	monkeypatch.setenv("ASSET_TRACKER_PUBLIC_ORIGIN", "http://117.72.217.15:8080")
+	monkeypatch.setenv("ASSET_TRACKER_PUBLIC_ORIGIN", "http://opentrifi.duckdns.org")
 	monkeypatch.setenv("ASSET_TRACKER_REDIS_URL", "redis://redis:6379/0")
 	monkeypatch.setenv("ASSET_TRACKER_SESSION_SECRET", "session-secret")
 	settings = get_settings()
 
 	assert settings.is_production is True
-	assert settings.cors_origins() == ["http://117.72.217.15:8080"]
+	assert settings.cors_origins() == ["http://opentrifi.duckdns.org"]
 	assert settings.session_cookie_https_only() is False
 
 
