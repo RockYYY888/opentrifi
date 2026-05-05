@@ -23,8 +23,6 @@ server {
 		text/plain
 		text/xml;
 
-	add_header Cache-Control "no-store" always;
-	add_header Pragma "no-cache" always;
 	add_header Cross-Origin-Opener-Policy "same-origin" always;
 	add_header Cross-Origin-Resource-Policy "same-origin" always;
 	add_header Permissions-Policy "camera=(), geolocation=(), microphone=()" always;
@@ -36,7 +34,93 @@ server {
 		root /var/www/certbot;
 	}
 
+	location ^~ /assets/ {
+		add_header Cache-Control "public, max-age=31536000, immutable" always;
+		expires 1y;
+		proxy_pass http://frontend:80;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Host $host;
+		proxy_set_header X-Forwarded-Proto $asset_tracker_forwarded_proto;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+
+	location = /manifest.webmanifest {
+		add_header Cache-Control "public, max-age=300, must-revalidate" always;
+		expires 5m;
+		proxy_pass http://frontend:80;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Host $host;
+		proxy_set_header X-Forwarded-Proto $asset_tracker_forwarded_proto;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+
+	location = /sw.js {
+		add_header Cache-Control "no-cache, must-revalidate" always;
+		expires -1;
+		proxy_pass http://frontend:80;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Host $host;
+		proxy_set_header X-Forwarded-Proto $asset_tracker_forwarded_proto;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+
+	location = /pwa-icon.svg {
+		add_header Cache-Control "public, max-age=604800, must-revalidate" always;
+		expires 7d;
+		proxy_pass http://frontend:80;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Host $host;
+		proxy_set_header X-Forwarded-Proto $asset_tracker_forwarded_proto;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+
+	location = /favicon.ico {
+		add_header Cache-Control "public, max-age=604800, must-revalidate" always;
+		expires 7d;
+		proxy_pass http://frontend:80/pwa-icon.svg;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Host $host;
+		proxy_set_header X-Forwarded-Proto $asset_tracker_forwarded_proto;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+
+	location = /apple-touch-icon.png {
+		add_header Cache-Control "public, max-age=604800, must-revalidate" always;
+		expires 7d;
+		proxy_pass http://frontend:80/pwa-icon.svg;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Host $host;
+		proxy_set_header X-Forwarded-Proto $asset_tracker_forwarded_proto;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+
+	location = /apple-touch-icon-precomposed.png {
+		add_header Cache-Control "public, max-age=604800, must-revalidate" always;
+		expires 7d;
+		proxy_pass http://frontend:80/pwa-icon.svg;
+		proxy_http_version 1.1;
+		proxy_set_header Host $host;
+		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_set_header X-Forwarded-Host $host;
+		proxy_set_header X-Forwarded-Proto $asset_tracker_forwarded_proto;
+		proxy_set_header X-Real-IP $remote_addr;
+	}
+
 	location /api/ {
+		add_header Cache-Control "no-store" always;
+		add_header Pragma "no-cache" always;
 		proxy_pass http://backend:8000;
 		proxy_http_version 1.1;
 		proxy_set_header Host $host;
@@ -47,6 +131,8 @@ server {
 	}
 
 	location / {
+		add_header Cache-Control "no-store" always;
+		add_header Pragma "no-cache" always;
 		proxy_pass http://frontend:80;
 		proxy_http_version 1.1;
 		proxy_set_header Host $host;
