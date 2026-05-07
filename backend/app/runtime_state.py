@@ -8,7 +8,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-import pickle
+import json
 import threading
 from typing import Generic, TypeVar
 
@@ -60,18 +60,181 @@ class LoginAttemptState:
 	last_attempt_at: datetime
 
 
+RUNTIME_SERIALIZER_VERSION = 2
+RUNTIME_KEY_PREFIX = "asset-tracker:v2:runtime"
+LEGACY_RUNTIME_KEY_PREFIX = "asset-tracker:runtime"
+JSON_TYPE_KEY = "__type__"
+
+
+def _datetime_to_json(value: datetime) -> str:
+	return value.isoformat()
+
+
+def _datetime_from_json(value: str) -> datetime:
+	return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def _to_json_value(value: object) -> object:
+	if isinstance(value, datetime):
+		return {JSON_TYPE_KEY: "datetime", "value": _datetime_to_json(value)}
+	if isinstance(value, Decimal):
+		return {JSON_TYPE_KEY: "decimal", "value": str(value)}
+	if isinstance(value, tuple):
+		return {JSON_TYPE_KEY: "tuple", "items": [_to_json_value(item) for item in value]}
+	if isinstance(value, DashboardResponse):
+		return {
+			JSON_TYPE_KEY: "DashboardResponse",
+			"value": value.model_dump(mode="json"),
+		}
+	if isinstance(value, DashboardCacheEntry):
+		return {
+			JSON_TYPE_KEY: "DashboardCacheEntry",
+			"dashboard": _to_json_value(value.dashboard),
+			"generated_at": _to_json_value(value.generated_at),
+		}
+	if isinstance(value, LivePortfolioState):
+		return {
+			JSON_TYPE_KEY: "LivePortfolioState",
+			"hour_bucket": _to_json_value(value.hour_bucket),
+			"latest_value_cny": _to_json_value(value.latest_value_cny),
+			"latest_generated_at": _to_json_value(value.latest_generated_at),
+			"has_assets_in_bucket": value.has_assets_in_bucket,
+		}
+	if isinstance(value, LiveHoldingReturnPoint):
+		return {
+			JSON_TYPE_KEY: "LiveHoldingReturnPoint",
+			"symbol": value.symbol,
+			"name": value.name,
+			"return_pct": _to_json_value(value.return_pct),
+		}
+	if isinstance(value, LiveHoldingsReturnState):
+		return {
+			JSON_TYPE_KEY: "LiveHoldingsReturnState",
+			"hour_bucket": _to_json_value(value.hour_bucket),
+			"latest_generated_at": _to_json_value(value.latest_generated_at),
+			"aggregate_return_pct": _to_json_value(value.aggregate_return_pct),
+			"holding_points": [_to_json_value(point) for point in value.holding_points],
+			"has_tracked_holdings_in_bucket": value.has_tracked_holdings_in_bucket,
+		}
+	if isinstance(value, LoginAttemptState):
+		return {
+			JSON_TYPE_KEY: "LoginAttemptState",
+			"attempt_timestamps": [_to_json_value(item) for item in value.attempt_timestamps],
+			"consecutive_failed_attempts": value.consecutive_failed_attempts,
+			"last_attempt_at": _to_json_value(value.last_attempt_at),
+		}
+	if isinstance(value, list):
+		return [_to_json_value(item) for item in value]
+	if isinstance(value, dict):
+		return {
+			str(key): _to_json_value(item)
+			for key, item in value.items()
+		}
+	if value is None or isinstance(value, (str, int, float, bool)):
+		return value
+
+	raise TypeError(f"Unsupported runtime state value type: {type(value).__name__}")
+
+
+def _from_json_value(value: object) -> object:
+	if isinstance(value, list):
+		return [_from_json_value(item) for item in value]
+	if not isinstance(value, dict):
+		return value
+
+	value_type = value.get(JSON_TYPE_KEY)
+	if value_type is None:
+		return {
+			str(key): _from_json_value(item)
+			for key, item in value.items()
+		}
+	if value_type == "datetime":
+		return _datetime_from_json(str(value["value"]))
+	if value_type == "decimal":
+		return Decimal(str(value["value"]))
+	if value_type == "tuple":
+		return tuple(_from_json_value(item) for item in value["items"])  # type: ignore[index]
+	if value_type == "DashboardResponse":
+		return DashboardResponse.model_validate(value["value"])
+	if value_type == "DashboardCacheEntry":
+		return DashboardCacheEntry(
+			dashboard=_from_json_value(value["dashboard"]),  # type: ignore[arg-type]
+			generated_at=_from_json_value(value["generated_at"]),  # type: ignore[arg-type]
+		)
+	if value_type == "LivePortfolioState":
+		return LivePortfolioState(
+			hour_bucket=_from_json_value(value["hour_bucket"]),  # type: ignore[arg-type]
+			latest_value_cny=_from_json_value(value["latest_value_cny"]),  # type: ignore[arg-type]
+			latest_generated_at=_from_json_value(value["latest_generated_at"]),  # type: ignore[arg-type]
+			has_assets_in_bucket=bool(value["has_assets_in_bucket"]),
+		)
+	if value_type == "LiveHoldingReturnPoint":
+		return LiveHoldingReturnPoint(
+			symbol=str(value["symbol"]),
+			name=str(value["name"]),
+			return_pct=_from_json_value(value["return_pct"]),  # type: ignore[arg-type]
+		)
+	if value_type == "LiveHoldingsReturnState":
+		return LiveHoldingsReturnState(
+			hour_bucket=_from_json_value(value["hour_bucket"]),  # type: ignore[arg-type]
+			latest_generated_at=_from_json_value(value["latest_generated_at"]),  # type: ignore[arg-type]
+			aggregate_return_pct=_from_json_value(value["aggregate_return_pct"]),  # type: ignore[arg-type]
+			holding_points=tuple(
+				_from_json_value(point)
+				for point in value["holding_points"]  # type: ignore[index]
+			),  # type: ignore[arg-type]
+			has_tracked_holdings_in_bucket=bool(value["has_tracked_holdings_in_bucket"]),
+		)
+	if value_type == "LoginAttemptState":
+		return LoginAttemptState(
+			attempt_timestamps=[
+				_from_json_value(item)
+				for item in value["attempt_timestamps"]  # type: ignore[index]
+			],  # type: ignore[list-item]
+			consecutive_failed_attempts=int(value["consecutive_failed_attempts"]),
+			last_attempt_at=_from_json_value(value["last_attempt_at"]),  # type: ignore[arg-type]
+		)
+
+	raise ValueError(f"Unsupported runtime state JSON type: {value_type}")
+
+
 def _serialize(value: object) -> bytes:
-	return pickle.dumps(value, protocol=pickle.HIGHEST_PROTOCOL)
+	payload = {
+		"version": RUNTIME_SERIALIZER_VERSION,
+		"value": _to_json_value(value),
+	}
+	return json.dumps(
+		payload,
+		ensure_ascii=False,
+		separators=(",", ":"),
+		sort_keys=True,
+	).encode("utf-8")
 
 
 def _deserialize(raw_value: bytes | None) -> object | None:
 	if raw_value is None:
 		return None
-	return pickle.loads(raw_value)
+	try:
+		payload = json.loads(raw_value.decode("utf-8"))
+		if not isinstance(payload, dict):
+			return None
+		if payload.get("version") != RUNTIME_SERIALIZER_VERSION:
+			return None
+		return _from_json_value(payload.get("value"))
+	except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+		return None
 
 
 def _serialize_key(value: object) -> str:
 	return base64.urlsafe_b64encode(_serialize(value)).decode("ascii")
+
+
+def _deserialize_key(value: str) -> object | None:
+	return _deserialize(base64.urlsafe_b64decode(value.encode("ascii")))
+
+
+def _redis_key_to_text(redis_key: bytes | str) -> str:
+	return redis_key.decode("utf-8") if isinstance(redis_key, bytes) else redis_key
 
 
 def _clear_prefixed_keys(redis_client: Redis, prefix: str) -> None:
@@ -80,8 +243,12 @@ def _clear_prefixed_keys(redis_client: Redis, prefix: str) -> None:
 		redis_client.delete(*keys)
 
 
+def clear_legacy_runtime_keys() -> None:
+	_clear_prefixed_keys(redis_client, LEGACY_RUNTIME_KEY_PREFIX)
+
+
 def _runtime_lock_key(name: str) -> str:
-	return f"asset-tracker:runtime:lock:{name}"
+	return f"{RUNTIME_KEY_PREFIX}:lock:{name}"
 
 
 class RedisBackedDict(MutableMapping[KeyType, ValueType], Generic[KeyType, ValueType]):
@@ -137,11 +304,15 @@ class RedisBackedDict(MutableMapping[KeyType, ValueType], Generic[KeyType, Value
 			raw_value = self._redis.get(redis_key)
 			if raw_value is None:
 				continue
-			decoded_key = redis_key.decode("utf-8")
+			decoded_key = _redis_key_to_text(redis_key)
 			key_fragment = decoded_key[len(self._prefix) + 1 :]
+			deserialized_key = _deserialize_key(key_fragment)
+			deserialized_value = _deserialize(raw_value)
+			if deserialized_key is None or deserialized_value is None:
+				continue
 			yield (
-				_deserialize(base64.urlsafe_b64decode(key_fragment.encode("ascii"))),  # type: ignore[arg-type]
-				_deserialize(raw_value),  # type: ignore[arg-type]
+				deserialized_key,  # type: ignore[misc]
+				deserialized_value,  # type: ignore[misc]
 			)
 
 	def pop(self, key: KeyType, default: ValueType | None = None) -> ValueType | None:
@@ -238,12 +409,12 @@ redis_client: Redis = Redis.from_url(redis_url)
 
 dashboard_cache: MutableMapping[str, DashboardCacheEntry] = RedisBackedDict[str, DashboardCacheEntry](
 	redis_client,
-	"asset-tracker:runtime:dashboard-cache",
+	f"{RUNTIME_KEY_PREFIX}:dashboard-cache",
 	ttl_seconds=DASHBOARD_CACHE_TTL_SECONDS,
 )
 live_portfolio_states: MutableMapping[str, LivePortfolioState] = RedisBackedDict[str, LivePortfolioState](
 	redis_client,
-	"asset-tracker:runtime:live-portfolio",
+	f"{RUNTIME_KEY_PREFIX}:live-portfolio",
 	ttl_seconds=LIVE_RUNTIME_STATE_TTL_SECONDS,
 )
 live_holdings_return_states: MutableMapping[str, LiveHoldingsReturnState] = RedisBackedDict[
@@ -251,7 +422,7 @@ live_holdings_return_states: MutableMapping[str, LiveHoldingsReturnState] = Redi
 	LiveHoldingsReturnState,
 ](
 	redis_client,
-	"asset-tracker:runtime:live-holdings-return",
+	f"{RUNTIME_KEY_PREFIX}:live-holdings-return",
 	ttl_seconds=LIVE_RUNTIME_STATE_TTL_SECONDS,
 )
 login_attempt_states: MutableMapping[tuple[str, str], LoginAttemptState] = RedisBackedDict[
@@ -259,24 +430,24 @@ login_attempt_states: MutableMapping[tuple[str, str], LoginAttemptState] = Redis
 	LoginAttemptState,
 ](
 	redis_client,
-	"asset-tracker:runtime:login-attempts",
+	f"{RUNTIME_KEY_PREFIX}:login-attempts",
 	ttl_seconds=LOGIN_ATTEMPT_TTL_SECONDS,
 )
 snapshot_rebuild_queue = RedisBackedQueue(
 	redis_client,
-	"asset-tracker:runtime:snapshot-rebuild-queue",
+	f"{RUNTIME_KEY_PREFIX}:snapshot-rebuild-queue",
 )
 snapshot_rebuild_users_in_queue: MutableSet[str] = RedisBackedSet(
 	redis_client,
-	"asset-tracker:runtime:snapshot-rebuild-users",
+	f"{RUNTIME_KEY_PREFIX}:snapshot-rebuild-users",
 )
 _last_global_force_refresh_at_store = RedisBackedScalar[datetime](
 	redis_client,
-	"asset-tracker:runtime:last-global-force-refresh-at",
+	f"{RUNTIME_KEY_PREFIX}:last-global-force-refresh-at",
 )
 _last_realtime_analytics_sampled_at_store = RedisBackedScalar[datetime](
 	redis_client,
-	"asset-tracker:runtime:last-realtime-analytics-sampled-at",
+	f"{RUNTIME_KEY_PREFIX}:last-realtime-analytics-sampled-at",
 )
 
 dashboard_cache_lock = asyncio.Lock()
@@ -309,6 +480,7 @@ def validate_runtime_redis_connection() -> None:
 	"""Fail fast when runtime storage cannot reach the configured Redis endpoint."""
 	try:
 		if redis_client.ping():
+			clear_legacy_runtime_keys()
 			return
 	except RedisError as exc:
 		raise RuntimeError(f"Unable to connect to Redis at {redis_url}.") from exc
