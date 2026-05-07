@@ -1,14 +1,10 @@
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { AdminFeedbackDialog } from "./components/feedback/AdminFeedbackDialog";
-import { AdminReleaseNotesDialog } from "./components/feedback/AdminReleaseNotesDialog";
-import { AgentExecutionAuditPanel } from "./components/assets/AgentExecutionAuditPanel";
-import { AssetRecordsDialog } from "./components/assets/AssetRecordsDialog";
-import { EmailDialog } from "./components/auth/EmailDialog";
 import { LoginScreen } from "./components/auth/LoginScreen";
-import { AssetManager } from "./components/assets";
-import { FeedbackDialog } from "./components/feedback/FeedbackDialog";
-import { UserFeedbackInboxDialog } from "./components/feedback/UserFeedbackInboxDialog";
+import { AppDialogs } from "./app/AppDialogs";
+import { AppHeroPanel } from "./app/AppHeroPanel";
+import { AppRecoveryScreen } from "./app/AppRecoveryScreen";
+import { AppWorkspaceSections } from "./app/AppWorkspaceSections";
 import {
 	AUTH_SUBMISSION_TIMEOUT_MS,
 	clearRememberedSessionUserId,
@@ -20,9 +16,6 @@ import {
 	withTimeout,
 } from "./app/authSession";
 import {
-	formatFxRate,
-	formatLastUpdated,
-	formatSummaryCny,
 	getMillisecondsUntilNextMinute,
 	getMillisecondsUntilNextSecond,
 	isDashboardSnapshotEmpty,
@@ -30,12 +23,11 @@ import {
 	toAssetManagerSeeds,
 	writeCachedDashboardSnapshot,
 } from "./app/dashboardRefresh";
-import { removeRecordById, replaceRecordById } from "./app/feedbackInbox";
-import { WorkspaceShell } from "./app/WorkspaceShell";
 import {
 	DEFAULT_MOUNTED_WORKSPACES,
 	type WorkspaceView,
 } from "./app/workspaceTypes";
+import { useFeedbackWorkspace } from "./app/useFeedbackWorkspace";
 import { createAssetManagerController, defaultAssetApiClient } from "./lib/assetApi";
 import {
 	getAuthSession,
@@ -43,31 +35,13 @@ import {
 	logoutCurrentUser,
 	registerWithPassword,
 	resetPasswordWithEmail,
-	updateCurrentUserEmail,
 } from "./lib/authApi";
 import { getDashboard } from "./lib/dashboardApi";
 import { useHasActiveAutoRefreshGuards } from "./lib/autoRefreshGuards";
-import {
-	createReleaseNoteForAdmin,
-	closeFeedbackForAdmin,
-	getFeedbackSummary,
-	hideInboxMessageForCurrentUser,
-	listFeedbackForCurrentUser,
-	listReleaseNotesForAdmin,
-	listReleaseNotesForCurrentUser,
-	listSystemFeedbackForAdmin,
-	listUserFeedbackForAdmin,
-	markFeedbackSeenForCurrentUser,
-	markReleaseNotesSeenForCurrentUser,
-	publishReleaseNoteForAdmin,
-	replyToFeedbackForAdmin,
-	submitUserFeedback,
-} from "./lib/feedbackApi";
 import type {
 	AuthLoginCredentials,
 	AuthRegisterCredentials,
 	PasswordResetPayload,
-	UserEmailUpdate,
 } from "./types/auth";
 import type {
 	AgentApiKeyIssueRecord,
@@ -77,23 +51,11 @@ import type {
 	CreateAgentApiKeyInput,
 } from "./types/assets";
 import { EMPTY_DASHBOARD, type DashboardResponse } from "./types/dashboard";
-import type {
-	AdminFeedbackRecord,
-	ReleaseNoteDeliveryRecord,
-	ReleaseNoteInput,
-	ReleaseNoteRecord,
-	UserFeedbackRecord,
-} from "./types/feedback";
-import { formatCny } from "./utils/portfolioAnalytics";
 
 const AGENT_AUDIT_BACKGROUND_REFRESH_DELAY_MS = 1500;
 const EMPTY_AGENT_REGISTRATIONS: AgentRegistrationRecord[] = [];
 const EMPTY_AGENT_API_KEYS: AgentApiKeyRecord[] = [];
 const EMPTY_AGENT_RECORDS: AssetRecordRecord[] = [];
-const PortfolioAnalytics = lazy(async () => {
-	const module = await import("./components/analytics");
-	return { default: module.PortfolioAnalytics };
-});
 const assetManagerController = createAssetManagerController(defaultAssetApiClient);
 
 function App() {
@@ -126,11 +88,6 @@ function App() {
 	const [isAssetRecordsOpen, setIsAssetRecordsOpen] = useState(false);
 	const [assetRecordsDialogVersion, setAssetRecordsDialogVersion] = useState(0);
 	const [assetRecordRefreshToken, setAssetRecordRefreshToken] = useState(0);
-	const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-	const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
-	const [feedbackErrorMessage, setFeedbackErrorMessage] = useState<string | null>(null);
-	const [feedbackNoticeMessage, setFeedbackNoticeMessage] = useState<string | null>(null);
-	const [feedbackInboxCount, setFeedbackInboxCount] = useState(0);
 	const [activeWorkspaceView, setActiveWorkspaceView] = useState<WorkspaceView>("manage");
 	const [mountedWorkspaceViews, setMountedWorkspaceViews] = useState<Record<WorkspaceView, boolean>>(
 		DEFAULT_MOUNTED_WORKSPACES,
@@ -147,32 +104,6 @@ function App() {
 	const [revokingAgentApiKeyId, setRevokingAgentApiKeyId] = useState<number | null>(null);
 	const [agentApiKeyErrorMessage, setAgentApiKeyErrorMessage] = useState<string | null>(null);
 	const [agentApiKeyNoticeMessage, setAgentApiKeyNoticeMessage] = useState<string | null>(null);
-	const [isAdminInboxOpen, setIsAdminInboxOpen] = useState(false);
-	const [isAdminReleaseNotesOpen, setIsAdminReleaseNotesOpen] = useState(false);
-	const [isUserInboxOpen, setIsUserInboxOpen] = useState(false);
-	const [isLoadingAdminInbox, setIsLoadingAdminInbox] = useState(false);
-	const [isAdminInboxShowingDismissed, setIsAdminInboxShowingDismissed] = useState(false);
-	const [isLoadingAdminReleaseNotes, setIsLoadingAdminReleaseNotes] = useState(false);
-	const [adminInboxErrorMessage, setAdminInboxErrorMessage] = useState<string | null>(null);
-	const [adminReleaseNotesErrorMessage, setAdminReleaseNotesErrorMessage] = useState<string | null>(
-		null,
-	);
-	const [adminUserFeedbackItems, setAdminUserFeedbackItems] = useState<AdminFeedbackRecord[]>([]);
-	const [adminSystemFeedbackItems, setAdminSystemFeedbackItems] = useState<AdminFeedbackRecord[]>(
-		[],
-	);
-	const [adminInboxReleaseNotes, setAdminInboxReleaseNotes] = useState<ReleaseNoteDeliveryRecord[]>(
-		[],
-	);
-	const [adminReleaseNotes, setAdminReleaseNotes] = useState<ReleaseNoteRecord[]>([]);
-	const [isLoadingUserInbox, setIsLoadingUserInbox] = useState(false);
-	const [userInboxErrorMessage, setUserInboxErrorMessage] = useState<string | null>(null);
-	const [userFeedbackItems, setUserFeedbackItems] = useState<UserFeedbackRecord[]>([]);
-	const [userReleaseNotes, setUserReleaseNotes] = useState<ReleaseNoteDeliveryRecord[]>([]);
-	const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
-	const [isSubmittingEmail, setIsSubmittingEmail] = useState(false);
-	const [emailDialogErrorMessage, setEmailDialogErrorMessage] = useState<string | null>(null);
-	const [emailNoticeMessage, setEmailNoticeMessage] = useState<string | null>(null);
 	const dashboardRequestInFlightRef = useRef<number | null>(null);
 	const latestDashboardRequestIdRef = useRef(0);
 	const pendingDashboardRefreshRef = useRef(false);
@@ -184,6 +115,57 @@ function App() {
 	const currentUserIdRef = useRef<string | null>(currentUserId);
 	const authStatusRef = useRef<AuthStatus>(authStatus);
 	const isAutoRefreshBlocked = useHasActiveAutoRefreshGuards();
+	const {
+		adminInboxErrorMessage,
+		adminInboxReleaseNotes,
+		adminReleaseNotes,
+		adminReleaseNotesErrorMessage,
+		adminSystemFeedbackItems,
+		adminUserFeedbackItems,
+		closeAdminInbox,
+		closeAdminReleaseNotes,
+		closeEmailDialog,
+		closeFeedbackDialog,
+		closeUserInbox,
+		emailDialogErrorMessage,
+		emailNoticeMessage,
+		feedbackErrorMessage,
+		feedbackInboxCount,
+		feedbackNoticeMessage,
+		handleAdminInboxShowDismissedChange,
+		handleCloseFeedbackItem,
+		handleCreateReleaseNote,
+		handleHideAdminFeedbackItem,
+		handlePublishReleaseNote,
+		handleReplyFeedbackItem,
+		handleSubmitEmail,
+		handleSubmitFeedback,
+		isAdminInboxOpen,
+		isAdminInboxShowingDismissed,
+		isAdminReleaseNotesOpen,
+		isEmailDialogOpen,
+		isFeedbackOpen,
+		isLoadingAdminInbox,
+		isLoadingAdminReleaseNotes,
+		isLoadingUserInbox,
+		isSubmittingEmail,
+		isSubmittingFeedback,
+		isUserInboxOpen,
+		openAdminInbox,
+		openAdminReleaseNotes,
+		openEmailDialog,
+		openFeedbackDialog,
+		openUserInbox,
+		refreshFeedbackSummary,
+		resetFeedbackWorkspaceState,
+		userFeedbackItems,
+		userInboxErrorMessage,
+		userReleaseNotes,
+	} = useFeedbackWorkspace({
+		authStatus,
+		currentUserId,
+		onEmailUpdated: setCurrentUserEmail,
+	});
 
 	useEffect(() => {
 		currentUserIdRef.current = currentUserId;
@@ -220,10 +202,7 @@ function App() {
 		setAuthStatus("authenticated");
 		setAuthErrorMessage(null);
 		setAuthNoticeMessage(null);
-		setFeedbackNoticeMessage(null);
-		setFeedbackInboxCount(0);
-		setFeedbackErrorMessage(null);
-		setIsFeedbackOpen(false);
+		resetFeedbackWorkspaceState();
 		setIsAssetRecordsOpen(false);
 		setAssetRecordsDialogVersion(0);
 		setAssetRecordRefreshToken(0);
@@ -242,23 +221,6 @@ function App() {
 		hasLoadedAgentAuditRef.current = false;
 		agentAuditRequestInFlightRef.current = null;
 		latestAgentAuditRequestIdRef.current += 1;
-		setIsLoadingAdminInbox(false);
-		setAdminInboxErrorMessage(null);
-		setIsAdminInboxOpen(false);
-		setIsLoadingAdminReleaseNotes(false);
-		setAdminReleaseNotesErrorMessage(null);
-		setIsAdminReleaseNotesOpen(false);
-		setAdminUserFeedbackItems([]);
-		setAdminSystemFeedbackItems([]);
-		setAdminInboxReleaseNotes([]);
-		setAdminReleaseNotes([]);
-		setUserInboxErrorMessage(null);
-		setIsUserInboxOpen(false);
-		setUserFeedbackItems([]);
-		setUserReleaseNotes([]);
-		setEmailNoticeMessage(null);
-		setEmailDialogErrorMessage(null);
-		setIsEmailDialogOpen(false);
 		invalidateDashboardRequests();
 		setDashboard(
 			hasUsableCachedDashboard && cachedDashboardSnapshot
@@ -283,10 +245,7 @@ function App() {
 		setCurrentUserEmail(null);
 		setAuthStatus("anonymous");
 		setAuthNoticeMessage(null);
-		setFeedbackNoticeMessage(null);
-		setFeedbackInboxCount(0);
-		setFeedbackErrorMessage(null);
-		setIsFeedbackOpen(false);
+		resetFeedbackWorkspaceState();
 		setIsAssetRecordsOpen(false);
 		setAssetRecordsDialogVersion(0);
 		setAssetRecordRefreshToken(0);
@@ -305,23 +264,6 @@ function App() {
 		hasLoadedAgentAuditRef.current = false;
 		agentAuditRequestInFlightRef.current = null;
 		latestAgentAuditRequestIdRef.current += 1;
-		setIsLoadingAdminInbox(false);
-		setAdminInboxErrorMessage(null);
-		setIsAdminInboxOpen(false);
-		setIsLoadingAdminReleaseNotes(false);
-		setAdminReleaseNotesErrorMessage(null);
-		setIsAdminReleaseNotesOpen(false);
-		setAdminUserFeedbackItems([]);
-		setAdminSystemFeedbackItems([]);
-		setAdminInboxReleaseNotes([]);
-		setAdminReleaseNotes([]);
-		setUserInboxErrorMessage(null);
-		setIsUserInboxOpen(false);
-		setUserFeedbackItems([]);
-		setUserReleaseNotes([]);
-		setEmailNoticeMessage(null);
-		setEmailDialogErrorMessage(null);
-		setIsEmailDialogOpen(false);
 		resetDashboardState();
 	}
 
@@ -522,16 +464,6 @@ function App() {
 		}
 	}
 
-	function openFeedbackDialog(): void {
-		if (authStatus !== "authenticated") {
-			return;
-		}
-
-		setFeedbackErrorMessage(null);
-		setFeedbackNoticeMessage(null);
-		setIsFeedbackOpen(true);
-	}
-
 	function openAssetRecordsDialog(): void {
 		if (authStatus !== "authenticated") {
 			return;
@@ -543,323 +475,6 @@ function App() {
 
 	function closeAssetRecordsDialog(): void {
 		setIsAssetRecordsOpen(false);
-	}
-
-	function openEmailDialog(): void {
-		if (authStatus !== "authenticated") {
-			return;
-		}
-
-		setEmailDialogErrorMessage(null);
-		setEmailNoticeMessage(null);
-		setIsEmailDialogOpen(true);
-	}
-
-	function closeEmailDialog(): void {
-		if (isSubmittingEmail) {
-			return;
-		}
-
-		setEmailDialogErrorMessage(null);
-		setIsEmailDialogOpen(false);
-	}
-
-	function closeFeedbackDialog(): void {
-		if (isSubmittingFeedback) {
-			return;
-		}
-
-		setFeedbackErrorMessage(null);
-		setIsFeedbackOpen(false);
-	}
-
-	async function refreshFeedbackSummary(): Promise<void> {
-		if (authStatus !== "authenticated") {
-			setFeedbackInboxCount(0);
-			return;
-		}
-
-		try {
-			const summary = await getFeedbackSummary();
-			setFeedbackInboxCount(summary.inbox_count);
-		} catch {
-			// Keep current badge value when summary refresh fails.
-		}
-	}
-
-	async function loadAdminInbox(includeHidden: boolean, openDialog = true): Promise<void> {
-		if (authStatus !== "authenticated" || currentUserId !== "admin") {
-			return;
-		}
-
-		setAdminInboxErrorMessage(null);
-		setIsAdminInboxShowingDismissed(includeHidden);
-		if (openDialog) {
-			setIsAdminInboxOpen(true);
-		}
-		setIsLoadingAdminInbox(true);
-
-		try {
-			const [userFeedbackItems, systemFeedbackItems, releaseNotes] = await Promise.all([
-				listUserFeedbackForAdmin(includeHidden),
-				listSystemFeedbackForAdmin(includeHidden),
-				listReleaseNotesForCurrentUser(),
-			]);
-			setAdminUserFeedbackItems(userFeedbackItems.items);
-			setAdminSystemFeedbackItems(systemFeedbackItems.items);
-			setAdminInboxReleaseNotes(releaseNotes);
-			await markReleaseNotesSeenForCurrentUser();
-			await refreshFeedbackSummary();
-		} catch (error) {
-			setAdminInboxErrorMessage(
-				error instanceof Error ? error.message : "消息加载失败，请稍后再试。",
-			);
-		} finally {
-			setIsLoadingAdminInbox(false);
-		}
-	}
-
-	async function openAdminInbox(): Promise<void> {
-		await loadAdminInbox(false);
-	}
-
-	function closeAdminInbox(): void {
-		if (isLoadingAdminInbox) {
-			return;
-		}
-
-		setAdminInboxErrorMessage(null);
-		setIsAdminInboxShowingDismissed(false);
-		setIsAdminInboxOpen(false);
-	}
-
-	async function handleAdminInboxShowDismissedChange(showDismissed: boolean): Promise<void> {
-		await loadAdminInbox(showDismissed, false);
-	}
-
-	async function openAdminReleaseNotes(): Promise<void> {
-		if (authStatus !== "authenticated" || currentUserId !== "admin") {
-			return;
-		}
-
-		setAdminReleaseNotesErrorMessage(null);
-		setIsAdminReleaseNotesOpen(true);
-		setIsLoadingAdminReleaseNotes(true);
-
-		try {
-			const releaseNotes = await listReleaseNotesForAdmin();
-			setAdminReleaseNotes(releaseNotes);
-		} catch (error) {
-			setAdminReleaseNotesErrorMessage(
-				error instanceof Error ? error.message : "更新日志加载失败，请稍后再试。",
-			);
-		} finally {
-			setIsLoadingAdminReleaseNotes(false);
-		}
-	}
-
-	function closeAdminReleaseNotes(): void {
-		if (isLoadingAdminReleaseNotes) {
-			return;
-		}
-
-		setAdminReleaseNotesErrorMessage(null);
-		setIsAdminReleaseNotesOpen(false);
-	}
-
-	async function openUserInbox(): Promise<void> {
-		if (authStatus !== "authenticated") {
-			return;
-		}
-
-		setUserInboxErrorMessage(null);
-		setIsUserInboxOpen(true);
-		setIsLoadingUserInbox(true);
-
-		try {
-			const feedbackItems = await listFeedbackForCurrentUser();
-			const releaseNotes = await listReleaseNotesForCurrentUser();
-			setUserFeedbackItems(feedbackItems);
-			setUserReleaseNotes(releaseNotes);
-			await markFeedbackSeenForCurrentUser();
-			await markReleaseNotesSeenForCurrentUser();
-			await refreshFeedbackSummary();
-		} catch (error) {
-			setUserInboxErrorMessage(
-				error instanceof Error ? error.message : "消息加载失败，请稍后再试。",
-			);
-		} finally {
-			setIsLoadingUserInbox(false);
-		}
-	}
-
-	function closeUserInbox(): void {
-		if (isLoadingUserInbox) {
-			return;
-		}
-
-		setUserInboxErrorMessage(null);
-		setIsUserInboxOpen(false);
-	}
-
-	async function handleSubmitFeedback(message: string): Promise<void> {
-		setIsSubmittingFeedback(true);
-		setFeedbackErrorMessage(null);
-
-		try {
-			await submitUserFeedback({ message });
-			setFeedbackNoticeMessage("问题反馈已记录。");
-			setIsFeedbackOpen(false);
-			await refreshFeedbackSummary();
-		} catch (error) {
-			setFeedbackErrorMessage(
-				error instanceof Error ? error.message : "反馈提交失败，请稍后再试。",
-			);
-		} finally {
-			setIsSubmittingFeedback(false);
-		}
-	}
-
-	async function handleCloseFeedbackItem(feedbackId: number): Promise<void> {
-		setIsLoadingAdminInbox(true);
-		setAdminInboxErrorMessage(null);
-
-		try {
-			const updatedItem = await closeFeedbackForAdmin(feedbackId);
-			setAdminUserFeedbackItems((currentItems) =>
-				replaceRecordById(currentItems, updatedItem),
-			);
-			setAdminSystemFeedbackItems((currentItems) =>
-				replaceRecordById(currentItems, updatedItem),
-			);
-			await refreshFeedbackSummary();
-		} catch (error) {
-			setAdminInboxErrorMessage(
-				error instanceof Error ? error.message : "关闭反馈失败，请稍后再试。",
-			);
-		} finally {
-			setIsLoadingAdminInbox(false);
-		}
-	}
-
-	async function handleReplyFeedbackItem(
-		feedbackId: number,
-		replyMessage: string,
-		close: boolean,
-	): Promise<void> {
-		setIsLoadingAdminInbox(true);
-		setAdminInboxErrorMessage(null);
-
-		try {
-			const updatedItem = await replyToFeedbackForAdmin(feedbackId, {
-				reply_message: replyMessage,
-				close,
-			});
-			setAdminUserFeedbackItems((currentItems) =>
-				replaceRecordById(currentItems, updatedItem),
-			);
-			setAdminSystemFeedbackItems((currentItems) =>
-				replaceRecordById(currentItems, updatedItem),
-			);
-			await refreshFeedbackSummary();
-		} catch (error) {
-			setAdminInboxErrorMessage(
-				error instanceof Error ? error.message : "回复失败，请稍后再试。",
-			);
-		} finally {
-			setIsLoadingAdminInbox(false);
-		}
-	}
-
-	async function handleHideAdminFeedbackItem(feedbackId: number): Promise<void> {
-		setIsLoadingAdminInbox(true);
-		setAdminInboxErrorMessage(null);
-
-		try {
-			await hideInboxMessageForCurrentUser({
-				message_kind: "FEEDBACK",
-				message_id: feedbackId,
-			});
-			if (isAdminInboxShowingDismissed) {
-				const [userFeedbackItems, systemFeedbackItems] = await Promise.all([
-					listUserFeedbackForAdmin(true),
-					listSystemFeedbackForAdmin(true),
-				]);
-				setAdminUserFeedbackItems(userFeedbackItems.items);
-				setAdminSystemFeedbackItems(systemFeedbackItems.items);
-			} else {
-				setAdminUserFeedbackItems((currentItems) =>
-					removeRecordById(currentItems, feedbackId),
-				);
-				setAdminSystemFeedbackItems((currentItems) =>
-					removeRecordById(currentItems, feedbackId),
-				);
-			}
-			await refreshFeedbackSummary();
-		} catch (error) {
-			setAdminInboxErrorMessage(
-				error instanceof Error ? error.message : "移除消息失败，请稍后再试。",
-			);
-		} finally {
-			setIsLoadingAdminInbox(false);
-		}
-	}
-
-	async function handleCreateReleaseNote(payload: ReleaseNoteInput): Promise<void> {
-		setIsLoadingAdminReleaseNotes(true);
-		setAdminReleaseNotesErrorMessage(null);
-
-		try {
-			const createdReleaseNote = await createReleaseNoteForAdmin(payload);
-			setAdminReleaseNotes((currentItems) => [createdReleaseNote, ...currentItems]);
-			await refreshFeedbackSummary();
-		} catch (error) {
-			setAdminReleaseNotesErrorMessage(
-				error instanceof Error ? error.message : "创建更新日志失败，请稍后再试。",
-			);
-		} finally {
-			setIsLoadingAdminReleaseNotes(false);
-		}
-	}
-
-	async function handlePublishReleaseNote(releaseNoteId: number): Promise<void> {
-		setIsLoadingAdminReleaseNotes(true);
-		setAdminReleaseNotesErrorMessage(null);
-
-		try {
-			const publishedReleaseNote = await publishReleaseNoteForAdmin(releaseNoteId);
-			setAdminReleaseNotes((currentItems) =>
-				currentItems.map((item) =>
-					item.id === publishedReleaseNote.id ? publishedReleaseNote : item
-				),
-			);
-			await refreshFeedbackSummary();
-		} catch (error) {
-			setAdminReleaseNotesErrorMessage(
-				error instanceof Error ? error.message : "发布更新日志失败，请稍后再试。",
-			);
-		} finally {
-			setIsLoadingAdminReleaseNotes(false);
-		}
-	}
-
-	async function handleSubmitEmail(payload: UserEmailUpdate): Promise<void> {
-		setIsSubmittingEmail(true);
-		setEmailDialogErrorMessage(null);
-		setEmailNoticeMessage(null);
-
-		try {
-			const session = await updateCurrentUserEmail(payload);
-			setCurrentUserEmail(session.email ?? null);
-			setEmailNoticeMessage("邮箱已更新。");
-			setIsEmailDialogOpen(false);
-		} catch (error) {
-			setEmailDialogErrorMessage(
-				error instanceof Error ? error.message : "邮箱保存失败，请稍后再试。",
-			);
-		} finally {
-			setIsSubmittingEmail(false);
-		}
 	}
 
 	async function loadDashboard(
@@ -1070,29 +685,7 @@ function App() {
 	const isRecoveringSession = authStatus === "checking" && currentUserId !== null;
 
 	if (isRecoveringSession) {
-		return (
-			<div className="app-shell">
-				<header className="hero-panel">
-					<div className="hero-copy-block">
-						<div className="hero-copy-block__main">
-							<p className="eyebrow">SESSION RESTORE</p>
-							<h1>正在恢复登录状态</h1>
-							<p className="hero-copy">确认当前会话之前，不展示本地缓存里的资产数据。</p>
-							<p className="hero-subtle">验证通过后会继续回到你的工作区。</p>
-						</div>
-					</div>
-
-					<div className="summary-grid" aria-label="恢复中的资产概览">
-						{["总资产", "现金资产", "投资类", "固定资产", "其他", "负债"].map((label) => (
-							<div key={label} className="stat-card neutral">
-								<span>{label}</span>
-								<strong>—</strong>
-							</div>
-						))}
-					</div>
-				</header>
-			</div>
-		);
+		return <AppRecoveryScreen />;
 	}
 
 	if (!currentUserId || authStatus === "anonymous") {
@@ -1121,149 +714,32 @@ function App() {
 		lastUpdatedAt === null &&
 		isDashboardSnapshotEmpty(dashboard);
 
-	function formatDashboardSummaryValue(value: number): string {
-		return showDashboardValuePlaceholder ? "—" : formatSummaryCny(value);
-	}
-
-	function getDashboardSummaryTitle(value: number): string {
-		return showDashboardValuePlaceholder ? "正在恢复数据" : formatCny(value);
-	}
-
-	function requestDashboardRefresh(): void {
-		void loadDashboard();
-	}
-
 	const hasDashboardSeedData = lastUpdatedAt !== null;
 	const assetManagerSeeds = hasDashboardSeedData ? toAssetManagerSeeds(dashboard) : null;
 
 	return (
 		<div className="app-shell">
-			<header className="hero-panel">
-				<div className="hero-copy-block">
-					<p className="eyebrow">OPEN TRAFI</p>
-					<h1>你好，{currentUserId}</h1>
-					<p className="hero-copy">你的资产与账户已隔离保存，并按分钟自动刷新。</p>
-					<p className="hero-subtle">
-						{currentUserEmail ? currentUserEmail : "未绑定邮箱，可用于找回密码。"}
-					</p>
-					<div className="hero-actions">
-						<button
-							type="button"
-							className="hero-note hero-note--action"
-							onClick={() => void loadDashboard({ forceRefresh: true })}
-							disabled={isDashboardBusy}
-						>
-							<span
-								className={`hero-note__status ${isDashboardBusy ? "is-active" : ""}`}
-								aria-hidden="true"
-							/>
-							<span>
-								{isDashboardBusy
-									? "同步中..."
-									: `最近更新：${formatLastUpdated(lastUpdatedAt)}`}
-							</span>
-						</button>
-						<button
-							type="button"
-							className="hero-note hero-note--action"
-							onClick={openEmailDialog}
-							disabled={isSubmittingEmail}
-						>
-							{currentUserEmail ? "修改邮箱" : "绑定邮箱"}
-						</button>
-						<button
-							type="button"
-							className="hero-note hero-note--action"
-							onClick={() =>
-								currentUserId === "admin" ? void openAdminInbox() : void openUserInbox()
-							}
-							disabled={isLoadingAdminInbox || isLoadingUserInbox}
-						>
-							{feedbackInboxCount > 0 ? `消息 (${feedbackInboxCount})` : "消息"}
-						</button>
-						{currentUserId === "admin" ? (
-							<button
-								type="button"
-								className="hero-note hero-note--action"
-							onClick={() => void openAdminReleaseNotes()}
-							disabled={isLoadingAdminReleaseNotes}
-						>
-							更新日志
-						</button>
-						) : null}
-						<button
-							type="button"
-							className="hero-note hero-note--action"
-							onClick={openAssetRecordsDialog}
-						>
-							记录
-						</button>
-						<button
-							type="button"
-							className="hero-note hero-note--action"
-							onClick={openFeedbackDialog}
-						>
-							反馈问题
-						</button>
-						<button
-							type="button"
-							className="hero-note hero-note--action"
-							onClick={() => void handleLogout()}
-						>
-							退出
-						</button>
-					</div>
-					<div className="hero-rates" aria-label="实时汇率">
-						<div className="rate-card">
-							<span>USD/CNY</span>
-							<strong>{formatFxRate(dashboard.usd_cny_rate)}</strong>
-						</div>
-						<div className="rate-card">
-							<span>HKD/CNY</span>
-							<strong>{formatFxRate(dashboard.hkd_cny_rate)}</strong>
-						</div>
-					</div>
-				</div>
-
-				<div className="summary-grid">
-					<div className="stat-card coral">
-						<span>总资产</span>
-						<strong title={getDashboardSummaryTitle(dashboard.total_value_cny)}>
-							{formatDashboardSummaryValue(dashboard.total_value_cny)}
-						</strong>
-					</div>
-					<div className="stat-card blue">
-						<span>现金资产</span>
-						<strong title={getDashboardSummaryTitle(dashboard.cash_value_cny)}>
-							{formatDashboardSummaryValue(dashboard.cash_value_cny)}
-						</strong>
-					</div>
-					<div className="stat-card green">
-						<span>投资类</span>
-						<strong title={getDashboardSummaryTitle(dashboard.holdings_value_cny)}>
-							{formatDashboardSummaryValue(dashboard.holdings_value_cny)}
-						</strong>
-					</div>
-					<div className="stat-card violet">
-						<span>固定资产</span>
-						<strong title={getDashboardSummaryTitle(dashboard.fixed_assets_value_cny)}>
-							{formatDashboardSummaryValue(dashboard.fixed_assets_value_cny)}
-						</strong>
-					</div>
-					<div className="stat-card amber">
-						<span>其他</span>
-						<strong title={getDashboardSummaryTitle(dashboard.other_assets_value_cny)}>
-							{formatDashboardSummaryValue(dashboard.other_assets_value_cny)}
-						</strong>
-					</div>
-					<div className="stat-card danger">
-						<span>负债</span>
-						<strong title={getDashboardSummaryTitle(-dashboard.liabilities_value_cny)}>
-							{formatDashboardSummaryValue(-dashboard.liabilities_value_cny)}
-						</strong>
-					</div>
-				</div>
-			</header>
+			<AppHeroPanel
+				currentUserId={currentUserId}
+				currentUserEmail={currentUserEmail}
+				dashboard={dashboard}
+				feedbackInboxCount={feedbackInboxCount}
+				isDashboardBusy={isDashboardBusy}
+				isLoadingAdminInbox={isLoadingAdminInbox}
+				isLoadingAdminReleaseNotes={isLoadingAdminReleaseNotes}
+				isLoadingUserInbox={isLoadingUserInbox}
+				isSubmittingEmail={isSubmittingEmail}
+				lastUpdatedAt={lastUpdatedAt}
+				showDashboardValuePlaceholder={showDashboardValuePlaceholder}
+				onForceDashboardRefresh={() => void loadDashboard({ forceRefresh: true })}
+				onOpenAdminInbox={() => void openAdminInbox()}
+				onOpenAdminReleaseNotes={() => void openAdminReleaseNotes()}
+				onOpenAssetRecords={openAssetRecordsDialog}
+				onOpenEmail={openEmailDialog}
+				onOpenFeedback={openFeedbackDialog}
+				onOpenUserInbox={() => void openUserInbox()}
+				onLogout={() => void handleLogout()}
+			/>
 
 			{feedbackNoticeMessage ? (
 				<div className="banner info">
@@ -1291,183 +767,79 @@ function App() {
 				<div className="banner info">暂无资产数据。</div>
 			) : null}
 
-			<WorkspaceShell activeView={activeWorkspaceView} onChange={setActiveWorkspaceView} />
-
-			{mountedWorkspaceViews.insights ? (
-				<section
-					className="panel section-shell"
-					hidden={activeWorkspaceView !== "insights"}
-					aria-hidden={activeWorkspaceView !== "insights"}
-				>
-					<div className="section-head">
-						<div>
-							<p className="eyebrow">ANALYTICS</p>
-							<h2>变化与分布</h2>
-							<p className="section-copy">走势与结构。</p>
-						</div>
-					</div>
-
-					<Suspense fallback={<div className="banner info">正在加载洞察模块...</div>}>
-						<PortfolioAnalytics
-							total_value_cny={dashboard.total_value_cny}
-							cash_accounts={dashboard.cash_accounts}
-							holdings={dashboard.holdings}
-							fixed_assets={dashboard.fixed_assets}
-							liabilities={dashboard.liabilities}
-							other_assets={dashboard.other_assets}
-							allocation={dashboard.allocation}
-							second_series={dashboard.second_series}
-							minute_series={dashboard.minute_series}
-							hour_series={dashboard.hour_series}
-							day_series={dashboard.day_series}
-							month_series={dashboard.month_series}
-							year_series={dashboard.year_series}
-							holdings_return_second_series={dashboard.holdings_return_second_series}
-							holdings_return_minute_series={dashboard.holdings_return_minute_series}
-							holdings_return_hour_series={dashboard.holdings_return_hour_series}
-							holdings_return_day_series={dashboard.holdings_return_day_series}
-							holdings_return_month_series={dashboard.holdings_return_month_series}
-							holdings_return_year_series={dashboard.holdings_return_year_series}
-							holding_return_series={dashboard.holding_return_series}
-							recent_holding_transactions={dashboard.recent_holding_transactions}
-							loading={isLoadingDashboard}
-						/>
-					</Suspense>
-				</section>
-			) : null}
-			{mountedWorkspaceViews.agent ? (
-				<section
-					className="panel section-shell"
-					hidden={activeWorkspaceView !== "agent"}
-					aria-hidden={activeWorkspaceView !== "agent"}
-				>
-					<div className="section-head">
-						<div>
-							<p className="eyebrow">AGENT</p>
-							<h2>Agent 与 API</h2>
-							<p className="section-copy">管理 API Key，查看活跃 Agent 与真实落库记录。</p>
-						</div>
-					</div>
-
-					<AgentExecutionAuditPanel
-						apiKeys={agentApiKeys}
-						registrations={agentRegistrations}
-						records={agentRecords}
-						apiDocUrl="https://github.com/RockYYY888/opentrifi/blob/main/docs/agent-api.md"
-						loading={isLoadingAgentAudit}
-						errorMessage={agentAuditErrorMessage}
-						apiKeyErrorMessage={agentApiKeyErrorMessage}
-						apiKeyNoticeMessage={agentApiKeyNoticeMessage}
-						issuedApiKey={issuedAgentApiKey}
-						isCreatingApiKey={isCreatingAgentApiKey}
-						revokingApiKeyId={revokingAgentApiKeyId}
-						onCreateApiKey={(payload) => void handleCreateAgentApiKey(payload)}
-						onRevokeApiKey={(tokenId) => void handleRevokeAgentApiKey(tokenId)}
-						onDismissIssuedApiKey={() => {
-							setIssuedAgentApiKey(null);
-							setAgentApiKeyNoticeMessage(null);
-						}}
-					/>
-				</section>
-			) : null}
-			<div
-				className="integrated-stack"
-				hidden={activeWorkspaceView !== "manage"}
-				aria-hidden={activeWorkspaceView !== "manage"}
-			>
-				<AssetManager
-					initialCashAccounts={
-						assetManagerSeeds?.cashAccounts
-					}
-					initialHoldings={
-						assetManagerSeeds?.holdings
-					}
-					initialFixedAssets={
-						assetManagerSeeds?.fixedAssets
-					}
-					initialLiabilities={
-						assetManagerSeeds?.liabilities
-					}
-					initialOtherAssets={
-						assetManagerSeeds?.otherAssets
-					}
-					cashActions={assetManagerController.cashAccounts}
-					cashTransferActions={assetManagerController.cashTransfers}
-					holdingActions={assetManagerController.holdings}
-					holdingTransactionActions={assetManagerController.holdingTransactions}
-					fixedAssetActions={assetManagerController.fixedAssets}
-					liabilityActions={assetManagerController.liabilities}
-					otherAssetActions={assetManagerController.otherAssets}
-					title="资产管理"
-					description="自动同步。"
-					loadOnMount
-					maxStartedOnDate={dashboard.server_today || undefined}
-					displayFxRates={{
-						CNY: 1,
-						USD: dashboard.usd_cny_rate,
-						HKD: dashboard.hkd_cny_rate,
-					}}
-					onRecordsCommitted={() => {
-						requestDashboardRefresh();
-						setAssetRecordRefreshToken((currentValue) => currentValue + 1);
-					}}
-				/>
-			</div>
-
-			<FeedbackDialog
-				open={isFeedbackOpen}
-				busy={isSubmittingFeedback}
-				errorMessage={feedbackErrorMessage}
-				onClose={closeFeedbackDialog}
-				onSubmit={handleSubmitFeedback}
+			<AppWorkspaceSections
+				activeWorkspaceView={activeWorkspaceView}
+				agentApiKeyErrorMessage={agentApiKeyErrorMessage}
+				agentApiKeyNoticeMessage={agentApiKeyNoticeMessage}
+				agentApiKeys={agentApiKeys}
+				agentAuditErrorMessage={agentAuditErrorMessage}
+				agentRecords={agentRecords}
+				agentRegistrations={agentRegistrations}
+				assetManagerController={assetManagerController}
+				assetManagerSeeds={assetManagerSeeds}
+				dashboard={dashboard}
+				isCreatingAgentApiKey={isCreatingAgentApiKey}
+				isLoadingAgentAudit={isLoadingAgentAudit}
+				isLoadingDashboard={isLoadingDashboard}
+				issuedAgentApiKey={issuedAgentApiKey}
+				mountedWorkspaceViews={mountedWorkspaceViews}
+				revokingAgentApiKeyId={revokingAgentApiKeyId}
+				onCreateAgentApiKey={(payload) => void handleCreateAgentApiKey(payload)}
+				onDismissIssuedApiKey={() => {
+					setIssuedAgentApiKey(null);
+					setAgentApiKeyNoticeMessage(null);
+				}}
+				onRecordsCommitted={() => {
+					void loadDashboard();
+					setAssetRecordRefreshToken((currentValue) => currentValue + 1);
+				}}
+				onRevokeAgentApiKey={(tokenId) => void handleRevokeAgentApiKey(tokenId)}
+				onWorkspaceChange={setActiveWorkspaceView}
 			/>
-			<AdminFeedbackDialog
-				open={isAdminInboxOpen}
-				busy={isLoadingAdminInbox}
-				viewerUserId={currentUserId ?? "anonymous"}
-				userItems={adminUserFeedbackItems}
-				systemItems={adminSystemFeedbackItems}
-				releaseNotes={adminInboxReleaseNotes}
-				showDismissed={isAdminInboxShowingDismissed}
-				errorMessage={adminInboxErrorMessage}
-				onClose={closeAdminInbox}
-				onShowDismissedChange={handleAdminInboxShowDismissedChange}
-				onHideItem={handleHideAdminFeedbackItem}
-				onCloseItem={handleCloseFeedbackItem}
-				onReplyItem={handleReplyFeedbackItem}
-			/>
-			<AdminReleaseNotesDialog
-				open={isAdminReleaseNotesOpen}
-				busy={isLoadingAdminReleaseNotes}
-				releaseNotes={adminReleaseNotes}
-				errorMessage={adminReleaseNotesErrorMessage}
-				onClose={closeAdminReleaseNotes}
+
+			<AppDialogs
+				adminInboxErrorMessage={adminInboxErrorMessage}
+				adminInboxReleaseNotes={adminInboxReleaseNotes}
+				adminReleaseNotes={adminReleaseNotes}
+				adminReleaseNotesErrorMessage={adminReleaseNotesErrorMessage}
+				adminSystemFeedbackItems={adminSystemFeedbackItems}
+				adminUserFeedbackItems={adminUserFeedbackItems}
+				assetRecordRefreshToken={assetRecordRefreshToken}
+				assetRecordsDialogVersion={assetRecordsDialogVersion}
+				currentUserEmail={currentUserEmail}
+				currentUserId={currentUserId}
+				emailDialogErrorMessage={emailDialogErrorMessage}
+				feedbackErrorMessage={feedbackErrorMessage}
+				isAdminInboxOpen={isAdminInboxOpen}
+				isAdminInboxShowingDismissed={isAdminInboxShowingDismissed}
+				isAdminReleaseNotesOpen={isAdminReleaseNotesOpen}
+				isAssetRecordsOpen={isAssetRecordsOpen}
+				isEmailDialogOpen={isEmailDialogOpen}
+				isFeedbackOpen={isFeedbackOpen}
+				isLoadingAdminInbox={isLoadingAdminInbox}
+				isLoadingAdminReleaseNotes={isLoadingAdminReleaseNotes}
+				isLoadingUserInbox={isLoadingUserInbox}
+				isSubmittingEmail={isSubmittingEmail}
+				isSubmittingFeedback={isSubmittingFeedback}
+				isUserInboxOpen={isUserInboxOpen}
+				listAssetRecords={defaultAssetApiClient.listAssetRecords}
+				userFeedbackItems={userFeedbackItems}
+				userInboxErrorMessage={userInboxErrorMessage}
+				userReleaseNotes={userReleaseNotes}
+				onCloseAdminInbox={closeAdminInbox}
+				onCloseAdminReleaseNotes={closeAdminReleaseNotes}
+				onCloseAssetRecords={closeAssetRecordsDialog}
+				onCloseEmail={closeEmailDialog}
+				onCloseFeedback={closeFeedbackDialog}
+				onCloseFeedbackItem={handleCloseFeedbackItem}
+				onCloseUserInbox={closeUserInbox}
 				onCreateReleaseNote={handleCreateReleaseNote}
+				onHideAdminFeedbackItem={handleHideAdminFeedbackItem}
 				onPublishReleaseNote={handlePublishReleaseNote}
-			/>
-			<UserFeedbackInboxDialog
-				open={isUserInboxOpen}
-				busy={isLoadingUserInbox}
-				viewerUserId={currentUserId ?? "anonymous"}
-				items={userFeedbackItems}
-				releaseNotes={userReleaseNotes}
-				errorMessage={userInboxErrorMessage}
-				onClose={closeUserInbox}
-			/>
-			<EmailDialog
-				open={isEmailDialogOpen}
-				busy={isSubmittingEmail}
-				initialEmail={currentUserEmail}
-				errorMessage={emailDialogErrorMessage}
-				onClose={closeEmailDialog}
-				onSubmit={(email) => handleSubmitEmail({ email })}
-			/>
-			<AssetRecordsDialog
-				key={assetRecordsDialogVersion}
-				open={isAssetRecordsOpen}
-				onClose={closeAssetRecordsDialog}
-				onLoadRecords={defaultAssetApiClient.listAssetRecords}
-				refreshToken={assetRecordRefreshToken}
+				onReplyFeedbackItem={handleReplyFeedbackItem}
+				onShowDismissedChange={handleAdminInboxShowDismissedChange}
+				onSubmitEmail={handleSubmitEmail}
+				onSubmitFeedback={handleSubmitFeedback}
 			/>
 		</div>
 	);
