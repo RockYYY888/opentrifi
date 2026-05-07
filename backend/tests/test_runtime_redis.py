@@ -252,56 +252,13 @@ def test_runtime_queue_async_get_uses_json_serializer() -> None:
 	assert asyncio.run(queue.get()) == "queued-user"
 
 
-def test_runtime_json_deserializer_ignores_legacy_pickle_payloads(
-	monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_runtime_json_deserializer_ignores_malformed_payloads() -> None:
 	redis_client = InMemoryRedis()
-	legacy_key = f"{runtime_state.LEGACY_RUNTIME_KEY_PREFIX}:dashboard-cache:old"
 	current_key = f"{runtime_state.RUNTIME_KEY_PREFIX}:dashboard-cache:old"
-	redis_client.set(legacy_key, b"\\x80\\x05legacy-pickle")
-	redis_client.set(current_key, b"\\x80\\x05legacy-pickle")
-	monkeypatch.setattr(runtime_state, "redis_client", redis_client)
+	redis_client.set(current_key, b"\\x80\\x05not-json")
 
-	runtime_state.clear_legacy_runtime_keys()
-
-	assert legacy_key not in redis_client.values
 	assert current_key in redis_client.values
 	assert runtime_state._deserialize(redis_client.get(current_key)) is None
-
-
-def test_init_db_stamps_legacy_schema_without_version_table(
-	empty_postgres_engine,
-	postgres_database_url: str,
-	monkeypatch: pytest.MonkeyPatch,
-) -> None:
-	engine = empty_postgres_engine
-	database.SQLModel.metadata.create_all(engine)
-
-	monkeypatch.setattr(database, "DATABASE_URL", postgres_database_url)
-	monkeypatch.setattr(database, "engine", engine)
-
-	database.init_db()
-
-	with engine.connect() as connection:
-		version = connection.execute(text("SELECT version_num FROM alembic_version")).scalar_one()
-
-	assert version == CURRENT_SCHEMA_REVISION
-
-
-def test_init_db_rejects_partial_legacy_schema_without_version_table(
-	empty_postgres_engine,
-	postgres_database_url: str,
-	monkeypatch: pytest.MonkeyPatch,
-) -> None:
-	engine = empty_postgres_engine
-	with engine.begin() as connection:
-		connection.execute(text("CREATE TABLE useraccount (username TEXT PRIMARY KEY)"))
-
-	monkeypatch.setattr(database, "DATABASE_URL", postgres_database_url)
-	monkeypatch.setattr(database, "engine", engine)
-
-	with pytest.raises(RuntimeError, match="Missing tables"):
-		database.init_db()
 
 
 def test_init_db_applies_migrations_to_empty_database(

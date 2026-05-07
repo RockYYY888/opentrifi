@@ -216,7 +216,7 @@ export function CashLedgerAdjustmentPanel({
 					{onCreate ? (
 						<button
 							type="button"
-							className="asset-manager__button asset-manager__button--legacy-add"
+							className="asset-manager__button asset-manager__button--primary"
 							onClick={openCreateForm}
 							disabled={busy || accounts.length === 0}
 						>
@@ -320,7 +320,7 @@ export function CashLedgerAdjustmentPanel({
 					<div className="asset-manager__form-actions">
 						<button
 							type="button"
-							className="asset-manager__button asset-manager__button--legacy-add"
+							className="asset-manager__button asset-manager__button--primary"
 							onClick={() => void handleSubmit()}
 							disabled={busy || isWorking}
 						>
@@ -373,7 +373,7 @@ export function CashLedgerAdjustmentPanel({
 									{onDelete ? (
 										<button
 											type="button"
-											className="asset-manager__button asset-manager__button--legacy-delete"
+											className="asset-manager__button asset-manager__button--danger"
 											onClick={() => void handleDelete(entry.id)}
 											disabled={busy || deletingId === entry.id}
 										>

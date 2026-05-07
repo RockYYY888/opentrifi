@@ -281,7 +281,7 @@ def _calculate_return_pct(
 	return display_percent(((to_decimal(current_value) - normalized_basis) / normalized_basis) * 100)
 
 def _coerce_utc_datetime(value: datetime) -> datetime:
-	"""Normalize persisted datetimes so legacy naive rows compare safely."""
+	"""Normalize persisted datetimes so naive rows compare safely."""
 	if value.tzinfo is None:
 		return value.replace(tzinfo=timezone.utc)
 

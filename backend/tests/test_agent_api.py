@@ -63,7 +63,7 @@ from app.services.auth_service import (
 	login_user,
 	list_agent_tokens,
 )
-from app.services import dashboard_service, job_service, legacy_service, service_context
+from app.services import dashboard_service, job_service, service_context
 from app.services.agent_demo_service import seed_agent_workspace_demo
 from app.services.asset_record_service import list_asset_records
 
@@ -147,7 +147,6 @@ def session(postgres_engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Sessio
 	engine = postgres_engine
 	monkeypatch.setattr(database, "engine", engine)
 	monkeypatch.setattr(job_service, "engine", engine)
-	monkeypatch.setattr(legacy_service, "engine", engine)
 	_reset_async_runtime_state()
 
 	with Session(engine) as db_session:
@@ -341,15 +340,15 @@ def test_list_agent_tokens_discards_revoked_keys(session: Session) -> None:
 	assert [token.name for token in listed_tokens] == ["local-cli"]
 
 
-def test_list_agent_tokens_normalizes_legacy_token_hints(session: Session) -> None:
+def test_list_agent_tokens_normalizes_malformed_token_hints(session: Session) -> None:
 	current_user = make_user(session)
 	issued_token = create_agent_token_for_current_session(
-		AgentTokenCreate(name="legacy-key"),
+		AgentTokenCreate(name="local-cli"),
 		current_user,
 		session,
 	)
 	token_row = session.exec(
-		select(AgentAccessToken).where(AgentAccessToken.name == "legacy-key"),
+		select(AgentAccessToken).where(AgentAccessToken.name == "local-cli"),
 	).one()
 	token_row.token_hint = "...abc123"
 	session.add(token_row)
@@ -668,7 +667,7 @@ def test_stale_agent_metadata_without_agent_name_is_treated_as_direct_api(sessio
 		agent_name=None,
 		task_type="CREATE_CASH_TRANSFER",
 		status="DONE",
-		input_json=json.dumps({"note": "legacy-direct-api"}),
+		input_json=json.dumps({"note": "direct-api"}),
 		result_json=json.dumps({"ok": True}),
 	)
 	audit = AssetMutationAudit(
@@ -683,7 +682,7 @@ def test_stale_agent_metadata_without_agent_name_is_treated_as_direct_api(sessio
 		operation="CREATE",
 		after_state=json.dumps(
 			{
-				"name": "Legacy API Wallet",
+				"name": "API Wallet",
 				"platform": "API",
 				"balance": 120,
 				"currency": "CNY",

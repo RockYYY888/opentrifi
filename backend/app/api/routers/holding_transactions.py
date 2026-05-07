@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.schemas import HoldingTransactionApplyRead, SecurityHoldingTransactionRead
-from app.services.portfolio_service import (
+from app.services.holding_transaction_service import (
 	create_holding_transaction,
 	delete_holding_transaction,
 	list_all_holding_transactions,

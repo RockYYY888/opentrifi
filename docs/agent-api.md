@@ -166,7 +166,6 @@ Expected response:
 | Method | Path | Purpose | Notes |
 | --- | --- | --- | --- |
 | `GET` | `/api/holdings` | List current holdings | Metadata read only |
-| `POST` | `/api/holdings` | Legacy holding creation route | Deprecated; returns `410 Gone`; use `POST /api/holding-transactions` instead |
 | `PUT` | `/api/holdings/{holding_id}` | Update holding metadata | Valid for note, broker, and metadata-only edits |
 | `DELETE` | `/api/holdings/{holding_id}` | Delete a holding | Removes the holding, its transaction history, and linked sell-side cash effects |
 | `GET` | `/api/holdings/{holding_id}/transactions` | List transactions for one holding | Per-holding transaction history |
@@ -382,9 +381,9 @@ for the current user as seen.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `quantity` | `number` or `string` | No | Metadata-compatibility field; prefer transaction edits for quantity changes |
-| `cost_basis_price` | `number` or `string` | No | Metadata-compatibility field; prefer transaction edits for cost changes |
-| `started_on` | `string` | No | Metadata-compatibility field; prefer transaction edits for date changes |
+| `quantity` | `number` or `string` | No | Correction field; prefer transaction edits for quantity changes |
+| `cost_basis_price` | `number` or `string` | No | Correction field; prefer transaction edits for cost changes |
+| `started_on` | `string` | No | Correction field; prefer transaction edits for date changes |
 | `broker` | `string` | No | Holding metadata |
 | `note` | `string` | No | Holding metadata |
 
@@ -490,7 +489,6 @@ If the same idempotency key is reused with a different request body, the backend
 | `204` | Successful delete with no response body |
 | `401` | Authentication failed or the bearer token is invalid |
 | `409` | Idempotency conflict or domain-level conflict |
-| `410` | Deprecated route intentionally disabled, such as `POST /api/holdings` |
 | `422` | Request validation failed |
 
 ## Minimal Call Patterns

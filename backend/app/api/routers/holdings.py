@@ -8,31 +8,31 @@ from app.schemas import (
 	SecurityQuoteRead,
 	SecuritySearchRead,
 )
-from app.services.portfolio_service import (
+from app.services.asset_entry_service import (
 	create_fixed_asset,
-	create_holding_legacy_endpoint,
 	create_liability,
 	create_other_asset,
 	delete_fixed_asset,
-	delete_holding,
 	delete_liability,
 	delete_other_asset,
-	get_security_quote,
 	list_fixed_assets,
-	list_holdings,
 	list_liabilities,
 	list_other_assets,
-	search_securities,
 	update_fixed_asset,
-	update_holding,
 	update_liability,
 	update_other_asset,
+)
+from app.services.holding_transaction_service import (
+	delete_holding,
+	get_security_quote,
+	list_holdings,
+	search_securities,
+	update_holding,
 )
 
 router = APIRouter()
 
 router.add_api_route("/api/holdings", list_holdings, methods=["GET"], response_model=list[SecurityHoldingRead])
-router.add_api_route("/api/holdings", create_holding_legacy_endpoint, methods=["POST"], status_code=410)
 router.add_api_route("/api/holdings/{holding_id}", update_holding, methods=["PUT"], response_model=SecurityHoldingRead)
 router.add_api_route("/api/holdings/{holding_id}", delete_holding, methods=["DELETE"], status_code=204)
 router.add_api_route("/api/fixed-assets", list_fixed_assets, methods=["GET"], response_model=list[FixedAssetRead])

@@ -51,7 +51,7 @@ const API_KEY_NAME_PATTERN = /^[a-z]+(?:-[a-z]+)*$/;
 const API_KEY_HINT_PREFIX = "sk-";
 const API_KEY_HINT_VISIBLE_CHARS = 2;
 const API_KEY_HINT_MASK = "*".repeat(11);
-const LEGACY_API_KEY_HINT_PLACEHOLDER = `${API_KEY_HINT_PREFIX}xx${API_KEY_HINT_MASK}`;
+const GENERIC_API_KEY_HINT_PLACEHOLDER = `${API_KEY_HINT_PREFIX}xx${API_KEY_HINT_MASK}`;
 const ASSET_CLASS_FILTERS: Array<{
 	value: "ALL" | AssetRecordAssetClass;
 	label: string;
@@ -133,7 +133,7 @@ function isApiKeyExpiringSoon(apiKey: AgentApiKeyRecord): boolean {
 function getVisibleTokenHint(tokenHint: string): string {
 	const normalized = tokenHint.trim();
 	if (!normalized.startsWith(API_KEY_HINT_PREFIX)) {
-		return LEGACY_API_KEY_HINT_PLACEHOLDER;
+		return GENERIC_API_KEY_HINT_PLACEHOLDER;
 	}
 
 	const visibleFragment = normalized

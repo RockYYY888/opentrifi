@@ -287,7 +287,7 @@ export function CashAccountForm({
 					<div className="asset-manager__form-actions">
 						<button
 							type="submit"
-							className="asset-manager__button asset-manager__button--legacy-add"
+							className="asset-manager__button asset-manager__button--primary"
 							disabled={isSubmitting}
 						>
 							{isSubmitting ? "保存中..." : resolvedSubmitLabel}
@@ -307,7 +307,7 @@ export function CashAccountForm({
 						{mode === "edit" && recordId !== null && onDelete ? (
 							<button
 								type="button"
-								className="asset-manager__button asset-manager__button--legacy-delete"
+								className="asset-manager__button asset-manager__button--danger"
 								onClick={() => setIsDeleteDialogOpen(true)}
 								disabled={isSubmitting}
 							>

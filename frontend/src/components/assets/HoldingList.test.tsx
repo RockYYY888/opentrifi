@@ -42,10 +42,10 @@ describe("HoldingList actions", () => {
 		fireEvent.click(screen.getByRole("button", { name: "编辑" }));
 
 		expect(screen.getByRole("button", { name: "新增买入" }).className).toContain(
-			"asset-manager__button--legacy-add",
+			"asset-manager__button--primary",
 		);
 		expect(screen.getByRole("button", { name: "新增卖出" }).className).toContain(
-			"asset-manager__button--legacy-delete",
+			"asset-manager__button--danger",
 		);
 
 		expect(onCreateBuy).toHaveBeenCalledTimes(1);

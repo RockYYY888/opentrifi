@@ -8,7 +8,7 @@ from app.schemas import (
 	CashLedgerEntryRead,
 )
 from app.services.asset_record_service import list_asset_records
-from app.services.portfolio_service import (
+from app.services.cash_account_service import (
 	create_account,
 	create_cash_ledger_adjustment,
 	delete_account,

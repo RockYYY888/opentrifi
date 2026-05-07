@@ -47,7 +47,7 @@ from app.services.common_service import (
     _server_today_date,
 )
 from app.services.history_sync_service import _has_holding_history_sync_pending
-from app.services.portfolio_service import (
+from app.services.portfolio_read_service import (
     _load_display_fx_rates,
     _value_cash_accounts,
     _value_fixed_assets,

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.schemas import CashTransferApplyRead, CashTransferRead
-from app.services.portfolio_service import (
+from app.services.cash_account_service import (
 	create_cash_transfer,
 	delete_cash_transfer,
 	list_cash_transfers,

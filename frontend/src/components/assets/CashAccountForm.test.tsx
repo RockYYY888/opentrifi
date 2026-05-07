@@ -112,10 +112,10 @@ describe("Cash account button styling", () => {
 		);
 
 		expect(screen.getByRole("button", { name: "编辑" }).className).toContain(
-			"asset-manager__button--legacy-add",
+			"asset-manager__button--primary",
 		);
 		expect(screen.getByRole("button", { name: "删除账户" }).className).toContain(
-			"asset-manager__button--legacy-delete",
+			"asset-manager__button--danger",
 		);
 	});
 
@@ -149,10 +149,10 @@ describe("Cash account button styling", () => {
 			"asset-manager__button--secondary",
 		);
 		expect(screen.getByRole("button", { name: "新增" }).className).toContain(
-			"asset-manager__button--legacy-add",
+			"asset-manager__button--primary",
 		);
 		expect(screen.getByRole("button", { name: "删除" }).className).toContain(
-			"asset-manager__button--legacy-delete",
+			"asset-manager__button--danger",
 		);
 	});
 

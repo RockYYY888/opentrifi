@@ -62,7 +62,6 @@ class LoginAttemptState:
 
 RUNTIME_SERIALIZER_VERSION = 2
 RUNTIME_KEY_PREFIX = "asset-tracker:v2:runtime"
-LEGACY_RUNTIME_KEY_PREFIX = "asset-tracker:runtime"
 JSON_TYPE_KEY = "__type__"
 
 
@@ -241,10 +240,6 @@ def _clear_prefixed_keys(redis_client: Redis, prefix: str) -> None:
 	keys = list(redis_client.scan_iter(f"{prefix}:*"))
 	if keys:
 		redis_client.delete(*keys)
-
-
-def clear_legacy_runtime_keys() -> None:
-	_clear_prefixed_keys(redis_client, LEGACY_RUNTIME_KEY_PREFIX)
 
 
 def _runtime_lock_key(name: str) -> str:
@@ -480,7 +475,6 @@ def validate_runtime_redis_connection() -> None:
 	"""Fail fast when runtime storage cannot reach the configured Redis endpoint."""
 	try:
 		if redis_client.ping():
-			clear_legacy_runtime_keys()
 			return
 	except RedisError as exc:
 		raise RuntimeError(f"Unable to connect to Redis at {redis_url}.") from exc

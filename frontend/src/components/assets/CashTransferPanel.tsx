@@ -311,7 +311,7 @@ export function CashTransferPanel({
 				<div className="asset-manager__form-actions">
 					<button
 						type="button"
-						className="asset-manager__button asset-manager__button--legacy-add"
+						className="asset-manager__button asset-manager__button--primary"
 						onClick={() => void handleSubmit()}
 						disabled={busy || isWorking}
 					>

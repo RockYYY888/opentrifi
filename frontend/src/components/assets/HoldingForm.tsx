@@ -869,7 +869,7 @@ export function HoldingForm({
 					<div className="asset-manager__panel-actions">
 						<button
 							type="button"
-							className="asset-manager__button asset-manager__button--legacy-delete"
+							className="asset-manager__button asset-manager__button--danger"
 							onClick={onCancel}
 							disabled={isSubmitting}
 						>
@@ -960,7 +960,7 @@ export function HoldingForm({
 				<div className="asset-manager__form-actions">
 					<button
 						type="submit"
-						className="asset-manager__button asset-manager__button--legacy-add"
+						className="asset-manager__button asset-manager__button--primary"
 						disabled={isSubmitting || (isSellTransaction && sellableHoldings.length === 0)}
 					>
 						{isSubmitting ? "保存中..." : resolvedSubmitLabel}
@@ -980,7 +980,7 @@ export function HoldingForm({
 					{isEditIntent && recordId !== null && onDelete ? (
 						<button
 							type="button"
-							className="asset-manager__button asset-manager__button--legacy-delete"
+							className="asset-manager__button asset-manager__button--danger"
 							onClick={() => void handleDelete()}
 							disabled={isSubmitting}
 						>

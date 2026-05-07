@@ -546,14 +546,14 @@
 	box-shadow: none;
 }
 
-.asset-manager__button--legacy-add {
+.asset-manager__button--primary {
 	border: 0;
 	background: linear-gradient(135deg, var(--accent-cyan), #97fff0);
 	color: #07111f;
 	box-shadow: 0 12px 22px rgba(99, 232, 255, 0.16);
 }
 
-.asset-manager__button--legacy-delete {
+.asset-manager__button--danger {
 	background: rgba(255, 124, 145, 0.14);
 	color: #ffc8d3;
 	border: 1px solid rgba(255, 124, 145, 0.24);

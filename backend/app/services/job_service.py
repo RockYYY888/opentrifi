@@ -234,13 +234,15 @@ def _execute_agent_task_command(
 	task: AgentTask,
 	current_user: UserAccount,
 ) -> dict[str, Any]:
-	from app.services.portfolio_service import (
+	from app.services.cash_account_service import (
 		create_cash_ledger_adjustment,
 		create_cash_transfer,
-		create_holding_transaction,
 		delete_cash_ledger_adjustment,
 		update_cash_ledger_adjustment,
 		update_cash_transfer,
+	)
+	from app.services.holding_transaction_service import (
+		create_holding_transaction,
 		update_holding_transaction,
 	)
 

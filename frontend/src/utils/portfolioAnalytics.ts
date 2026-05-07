@@ -554,23 +554,16 @@ export function buildPreparedTimelineSeriesByRange(
 }
 
 export function buildDisplayTimelineSeriesByRange(
-	secondOrHourSeries: TimelinePoint[],
-	minuteOrDaySeries: TimelinePoint[],
-	hourOrMonthSeries: TimelinePoint[],
-	dayOrYearSeries: TimelinePoint[],
-	monthSeries?: TimelinePoint[],
-	yearSeries?: TimelinePoint[],
+	secondSeries: TimelinePoint[],
+	minuteSeries: TimelinePoint[],
+	hourSeries: TimelinePoint[],
+	daySeries: TimelinePoint[],
+	monthSeries: TimelinePoint[],
+	yearSeries: TimelinePoint[],
 ): PreparedTimelineSeriesByRange {
-	const legacyFourRangeMode = yearSeries === undefined;
-	const secondSeries = yearSeries === undefined ? [] : secondOrHourSeries;
-	const minuteSeries = yearSeries === undefined ? secondOrHourSeries : minuteOrDaySeries;
-	const hourSeries = yearSeries === undefined ? secondOrHourSeries : hourOrMonthSeries;
-	const daySeries = yearSeries === undefined ? minuteOrDaySeries : dayOrYearSeries;
-	const resolvedMonthSeries = yearSeries === undefined ? hourOrMonthSeries : (monthSeries ?? []);
-	const resolvedYearSeries = yearSeries === undefined ? dayOrYearSeries : yearSeries;
 	const preparedDaySeries = prepareTimelineSeries(daySeries);
-	const preparedMonthSeries = prepareTimelineSeries(resolvedMonthSeries);
-	const preparedYearSeries = prepareTimelineSeries(resolvedYearSeries);
+	const preparedMonthSeries = prepareTimelineSeries(monthSeries);
+	const preparedYearSeries = prepareTimelineSeries(yearSeries);
 	const yearUsesMonthlyBuckets = preparedMonthSeries.length >= 2;
 	const yearSourceSeries = yearUsesMonthlyBuckets
 		? preparedMonthSeries
@@ -584,8 +577,8 @@ export function buildDisplayTimelineSeriesByRange(
 		),
 		minute: buildRegularizedWindowedTimelineSeries(
 			prepareTimelineSeries(minuteSeries),
-			legacyFourRangeMode ? "hour" : "minute",
-			legacyFourRangeMode ? 1 : 60,
+			"minute",
+			60,
 		),
 		hour: buildRegularizedWindowedTimelineSeries(
 			mergeTimelineSeries(daySeries, hourSeries),

@@ -44,7 +44,7 @@ from app.services.history_sync_service import (
 	_has_holding_history_sync_pending,
 )
 from app.services.market_data import QuoteLookupError
-from app.services.portfolio_service import (
+from app.services.holding_projection_service import (
 	HOLDING_QUANTITY_EPSILON,
 	_ensure_transaction_baseline_from_holding_snapshot,
 	ProjectedHoldingState,

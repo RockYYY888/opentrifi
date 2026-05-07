@@ -66,7 +66,6 @@ EXPECTED_API_ROUTE_METHODS = {
 	("POST", "/api/feedback/mark-seen"),
 	("POST", "/api/fixed-assets"),
 	("POST", "/api/holding-transactions"),
-	("POST", "/api/holdings"),
 	("POST", "/api/liabilities"),
 	("POST", "/api/messages/hide"),
 	("POST", "/api/other-assets"),
@@ -88,7 +87,7 @@ def test_api_route_contract_is_stable() -> None:
 	}
 
 	assert actual_routes == EXPECTED_API_ROUTE_METHODS
-	assert len(actual_routes) == 74
+	assert len(actual_routes) == 73
 
 
 def test_openapi_paths_match_route_contract() -> None:

@@ -8,7 +8,6 @@ from typing import Iterable
 
 DEFAULT_RELEASE_ENV_FILE_NAMES = (
 	".env.release-deploy.local",
-	".env.codex-feedback-automation.local",
 )
 
 

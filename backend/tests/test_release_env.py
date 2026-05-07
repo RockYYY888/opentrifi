@@ -50,11 +50,9 @@ def test_load_env_defaults_preserves_existing_environment(
 	assert release_env.get_env_value("ASSET_TRACKER_SERVER_ORIGIN") == "https://existing.example.com"
 
 
-def test_resolve_env_file_prefers_release_deploy_local_over_legacy_name(
+def test_resolve_env_file_uses_release_deploy_local(
 	tmp_path: Path,
 ) -> None:
-	legacy_file = tmp_path / ".env.codex-feedback-automation.local"
-	legacy_file.write_text("FEEDBACK_ADMIN_USER=admin\n", encoding="utf-8")
 	release_file = tmp_path / ".env.release-deploy.local"
 	release_file.write_text("ASSET_TRACKER_ADMIN_USER=admin\n", encoding="utf-8")
 

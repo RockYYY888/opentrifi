@@ -206,13 +206,13 @@ describe("AgentExecutionAuditPanel", () => {
 		expect(screen.getByText("当前账号还没有有效的 API Key。")).toBeTruthy();
 	});
 
-	it("falls back to a generic sk- mask for legacy token hints", () => {
+	it("falls back to a generic sk- mask for malformed token hints", () => {
 		render(
 			<AgentExecutionAuditPanel
 				apiKeys={[
 					{
 						id: 10,
-						name: "legacy-key",
+						name: "local-cli",
 						token_hint: "...abc123",
 						created_at: "2026-03-14T10:00:00.000Z",
 						updated_at: "2026-03-14T10:00:00.000Z",
@@ -225,10 +225,10 @@ describe("AgentExecutionAuditPanel", () => {
 					{
 						id: 4,
 						user_id: "admin",
-						name: "legacy-agent",
+						name: "portfolio-agent",
 						status: "ACTIVE",
 						request_count: 2,
-						latest_api_key_name: "legacy-key",
+						latest_api_key_name: "local-cli",
 						last_used_at: "2026-03-14T10:05:00.000Z",
 						last_seen_at: "2026-03-14T10:05:00.000Z",
 						created_at: "2026-03-14T10:00:00.000Z",

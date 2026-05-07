@@ -62,9 +62,9 @@ from app.services.dashboard_live_service import (
 	_update_live_holdings_return_state,
 	_update_live_portfolio_state,
 )
-from app.services.portfolio_service import (
-	_list_holding_transactions_for_user,
-	_to_holding_transaction_reads,
+from app.services.holding_projection_service import _to_holding_transaction_reads
+from app.services.holding_transaction_service import _list_holding_transactions_for_user
+from app.services.portfolio_read_service import (
     _load_display_fx_rates,
     _value_cash_accounts,
     _value_fixed_assets,

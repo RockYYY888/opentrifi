@@ -141,6 +141,8 @@ describe("prepareTimelineSeries", () => {
 describe("buildDisplayTimelineSeriesByRange", () => {
 	it("derives a 1-day return window from sparse hourly history plus daily checkpoints", () => {
 		const seriesByRange = buildDisplayTimelineSeriesByRange(
+			[],
+			[],
 			[
 				{
 					label: "03-14 21:00",
@@ -174,8 +176,9 @@ describe("buildDisplayTimelineSeriesByRange", () => {
 		expect(seriesByRange.hour[24]?.label).toBe("03-14 21:00");
 	});
 
-	it("derives a 1-hour window from the latest hourly checkpoints", () => {
+	it("derives a 1-hour window from the latest minute checkpoints", () => {
 		const seriesByRange = buildDisplayTimelineSeriesByRange(
+			[],
 			[
 				{
 					label: "03-24 10:00",
@@ -196,17 +199,25 @@ describe("buildDisplayTimelineSeriesByRange", () => {
 			[],
 			[],
 			[],
+			[],
 		);
 
-		expect(seriesByRange.minute.map((point) => point.label)).toEqual([
-			"03-24 11:00",
-			"03-24 12:00",
+		expect(seriesByRange.minute).toHaveLength(61);
+		expect(seriesByRange.minute[0]?.label).toBe("03-24 11:00");
+		expect(seriesByRange.minute[59]?.label).toBe("03-24 11:59");
+		expect(seriesByRange.minute[60]?.label).toBe("03-24 12:00");
+		expect(seriesByRange.minute[1]?.synthetic).toBe(true);
+		expect(seriesByRange.minute.map((point) => point.value)).toEqual([
+			233_000,
+			...Array(59).fill(233_000),
+			235_500,
 		]);
-		expect(seriesByRange.minute.map((point) => point.value)).toEqual([233_000, 235_500]);
 	});
 
 	it("forward-fills missing hourly buckets and keeps the latest duplicate in each bucket", () => {
 		const seriesByRange = buildDisplayTimelineSeriesByRange(
+			[],
+			[],
 			[
 				{
 					label: "03-24 11:00",
@@ -261,6 +272,8 @@ describe("buildDisplayTimelineSeriesByRange", () => {
 		}));
 
 		const seriesByRange = buildDisplayTimelineSeriesByRange(
+			[],
+			[],
 			[],
 			dailySeries,
 			[],

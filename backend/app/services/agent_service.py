@@ -35,7 +35,8 @@ from app.services.common_service import (
 	_load_idempotent_response,
 	_store_idempotent_response,
 )
-from app.services.portfolio_service import _list_holding_transactions_for_user, _to_holding_transaction_reads
+from app.services.holding_projection_service import _to_holding_transaction_reads
+from app.services.holding_transaction_service import _list_holding_transactions_for_user
 from app.services.service_context import SessionDependency
 
 

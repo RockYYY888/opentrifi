@@ -42,7 +42,6 @@ from app.services.dashboard_live_service import (
 )
 from app.services.holding_transaction_service import (
 	create_holding,
-	create_holding_legacy_endpoint,
 	create_holding_transaction,
 	delete_holding,
 	delete_holding_transaction,
@@ -952,23 +951,6 @@ def test_create_holding_bootstraps_buy_transaction_baseline(session: Session) ->
 	assert transactions[0].quantity == 2
 	assert transactions[0].price == 88
 	assert transactions[0].traded_on == date(2026, 2, 14)
-
-
-def test_legacy_create_holding_endpoint_returns_410(session: Session) -> None:
-	current_user = make_user(session)
-	with pytest.raises(HTTPException) as error:
-		create_holding_legacy_endpoint(
-			SecurityHoldingCreate(
-				symbol="aapl",
-				name="Apple",
-				quantity=1,
-				fallback_currency="usd",
-				market="us",
-			),
-			current_user,
-		)
-	assert error.value.status_code == 410
-	assert "已停用" in str(error.value.detail)
 
 
 def test_holding_transaction_buy_and_sell_rebuilds_position_from_lots(session: Session) -> None:
@@ -2337,7 +2319,7 @@ def test_update_holding_rebases_earliest_transaction_for_backdated_holding_corre
 			market="us",
 			broker="IBKR",
 			started_on=date(2026, 2, 14),
-			note="legacy note",
+			note="original note",
 		),
 		current_user,
 		session,
@@ -2353,7 +2335,7 @@ def test_update_holding_rebases_earliest_transaction_for_backdated_holding_corre
 			market="US",
 			broker="IBKR",
 			traded_on=date(2026, 3, 1),
-			note="legacy note",
+			note="original note",
 		),
 		current_user,
 		session,
@@ -2377,7 +2359,7 @@ def test_update_holding_rebases_earliest_transaction_for_backdated_holding_corre
 	assert updated_holding.cost_basis_price == pytest.approx(114.4)
 	assert updated_holding.market == "US"
 	assert updated_holding.broker == "IBKR"
-	assert updated_holding.note == "legacy note"
+	assert updated_holding.note == "original note"
 	assert updated_holding.started_on == date(2026, 2, 10)
 
 	transactions = list(
@@ -3253,11 +3235,11 @@ def test_process_pending_holding_history_sync_applies_holding_adjustment_on_effe
 	assert adjustment_transactions[0].traded_on == date(2026, 3, 22)
 
 
-def test_rebuild_user_holding_history_snapshots_backfills_legacy_holdings_without_transactions(
+def test_rebuild_user_holding_history_snapshots_backfills_holdings_without_transactions(
 	session: Session,
 	monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-	current_user = make_user(session, "legacy_holding_backfill_user")
+	current_user = make_user(session, "holding_backfill_user")
 	fixed_now = datetime(2026, 3, 25, 10, 0, tzinfo=timezone.utc)
 
 	class ConstantHoldingValueMarketDataClient(StaticMarketDataClient):
@@ -3288,7 +3270,7 @@ def test_rebuild_user_holding_history_snapshots_backfills_legacy_holdings_withou
 			return (
 				Quote(
 					symbol=symbol,
-					name="Legacy Holding",
+					name="Projected Holding",
 					price=20.0,
 					currency="USD",
 					market_time=fixed_now,

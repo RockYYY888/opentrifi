@@ -157,15 +157,6 @@ def create_holding(
 	_invalidate_dashboard_cache(current_user.username)
 	return _to_holding_read(holding)
 
-def create_holding_legacy_endpoint(
-	_: SecurityHoldingCreate,
-	__: CurrentUserDependency,
-) -> Response:
-	raise HTTPException(
-		status_code=410,
-		detail="持仓新增接口已停用，请改用 /api/holding-transactions 提交买入/卖出。",
-	)
-
 def update_holding(
 	holding_id: int,
 	payload: SecurityHoldingUpdate,
@@ -944,4 +935,4 @@ async def search_securities(
 
 	return await service_context.market_data_client.search_securities(query)
 
-__all__ = ['list_holdings', 'create_holding', 'create_holding_legacy_endpoint', 'update_holding', 'delete_holding', '_list_holding_transactions_for_user', 'list_all_holding_transactions', 'list_holding_transactions', 'create_holding_transaction', 'update_holding_transaction', 'delete_holding_transaction', 'get_security_quote', 'search_securities']
+__all__ = ['list_holdings', 'create_holding', 'update_holding', 'delete_holding', '_list_holding_transactions_for_user', 'list_all_holding_transactions', 'list_holding_transactions', 'create_holding_transaction', 'update_holding_transaction', 'delete_holding_transaction', 'get_security_quote', 'search_securities']
