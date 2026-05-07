@@ -4,9 +4,9 @@ from datetime import datetime, timezone
 import httpx
 import pytest
 
-import app.main as main
 from app.models import SecurityHolding
 from app.services.cache import RedisBackedTTLCache, TTLCache
+from app.services.common_service import _coerce_utc_datetime
 from app.services.market_data import (
 	BitgetQuoteProvider,
 	EastMoneyQuoteProvider,
@@ -27,6 +27,7 @@ from app.services.market_data import (
 	parse_eastmoney_search_item,
 )
 from app.services import service_context
+from app.services.portfolio_read_service import _value_holdings
 
 
 def _make_quote(
@@ -170,7 +171,7 @@ def test_build_fx_symbol_uses_yahoo_pair_format() -> None:
 
 def test_coerce_utc_datetime_treats_naive_values_as_utc() -> None:
 	naive_timestamp = datetime(2026, 3, 1, 8, 0, 0)
-	normalized_timestamp = main._coerce_utc_datetime(naive_timestamp)
+	normalized_timestamp = _coerce_utc_datetime(naive_timestamp)
 
 	assert normalized_timestamp.tzinfo == timezone.utc
 	assert normalized_timestamp.hour == 8
@@ -1083,7 +1084,7 @@ def test_value_holdings_turns_provider_failure_into_warning(
 	)
 	monkeypatch.setattr(service_context, "market_data_client", FailingMarketDataClient())
 
-	items, total, warnings = asyncio.run(main._value_holdings([holding]))
+	items, total, warnings = asyncio.run(_value_holdings([holding]))
 
 	assert total == 0.0
 	assert items[0].price == 0.0
@@ -1124,7 +1125,7 @@ def test_value_holdings_fetches_quotes_concurrently(
 	]
 	monkeypatch.setattr(service_context, "market_data_client", client)
 
-	items, total, warnings = asyncio.run(main._value_holdings(holdings))
+	items, total, warnings = asyncio.run(_value_holdings(holdings))
 
 	assert [item.symbol for item in items] == ["AAPL", "MSFT", "GOOG"]
 	assert total == 2100.0

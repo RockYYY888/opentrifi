@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import "./asset-components.css";
-import { DatePickerField } from "./DatePickerField";
+import { HoldingCashSettlementFields } from "./HoldingCashSettlementFields";
+import {
+	HoldingMergePreviewDialog,
+	type HoldingMergePreview,
+} from "./HoldingMergePreviewDialog";
+import { HoldingSearchSection } from "./HoldingSearchSection";
+import { HoldingTransactionFields } from "./HoldingTransactionFields";
 import {
 	calculateTargetCnyAmount,
 	normalizeSupportedCurrency,
-	TARGET_DISPLAY_CURRENCY,
 	type SupportedCurrencyFxRates,
 } from "../../lib/assetCurrency";
 import {
-	formatCnyAmount,
 	formatMoneyAmount,
-	formatPriceAmount,
 	formatQuantity,
-	formatSecurityMarket,
 } from "../../lib/assetFormatting";
 import { useAutoRefreshGuard } from "../../lib/autoRefreshGuards";
 import { toErrorMessage } from "../../lib/apiClient";
@@ -32,8 +34,6 @@ import type {
 import {
 	DEFAULT_HOLDING_FORM_DRAFT,
 	SELL_PROCEEDS_HANDLING_OPTIONS,
-	SECURITY_MARKET_OPTIONS,
-	SUPPORTED_CURRENCY_OPTIONS,
 } from "../../types/assets";
 
 export interface HoldingFormProps {
@@ -61,19 +61,6 @@ export interface HoldingFormProps {
 
 const EMPTY_HOLDINGS: HoldingRecord[] = [];
 const EMPTY_CASH_ACCOUNTS: CashAccountRecord[] = [];
-type HoldingMergePreview = {
-	targetRecord: HoldingRecord;
-	sourceRecordId: number | null;
-	mergedPayload: HoldingInput;
-	existingQuantity: number;
-	incomingQuantity: number;
-	mergedQuantity: number;
-	existingCostBasis: number | null;
-	incomingCostBasis: number | null;
-	mergedCostBasis: number | null;
-	knownCostTotal: number | null;
-	estimatedReturnPct: number | null;
-};
 
 function toHoldingDraft(value?: Partial<HoldingFormDraft> | null): HoldingFormDraft {
 	return {
@@ -237,14 +224,6 @@ function findDuplicateHolding(
 
 		return holding.symbol.trim().toUpperCase() === normalizedSymbol;
 	}) ?? null;
-}
-
-function formatPreviewPrice(value: number | null | undefined, currency: string): string {
-	if (value == null || !Number.isFinite(value)) {
-		return "待补充";
-	}
-
-	return `${value.toFixed(2)} ${currency}`;
 }
 
 function formatCashAccountOptionLabel(account: CashAccountRecord): string {
@@ -923,372 +902,60 @@ export function HoldingForm({
 
 			<form className="asset-manager__form" onSubmit={(event) => void handleSubmit(event)}>
 				{shouldShowSearchInput ? (
-					<>
-						<label className="asset-manager__field asset-manager__search-field">
-							<span>搜索投资标的</span>
-							<div className="asset-manager__search-shell">
-								<input
-									value={searchQuery}
-									onChange={(event) => handleSearchInput(event.target.value)}
-									onFocus={() => setIsSearchOpen(searchResults.length > 0)}
-									onBlur={() => window.setTimeout(() => setIsSearchOpen(false), 120)}
-									placeholder="输入名称或代码，例如：寒武纪 / 理想 / BTC"
-									autoComplete="off"
-								/>
-
-								{isSearching ? (
-									<p className="asset-manager__helper-text">正在搜索…</p>
-								) : searchEnabled &&
-									searchQuery.trim() &&
-									!draft.symbol &&
-									searchResults.length === 0 &&
-									!searchError ? (
-									<p className="asset-manager__helper-text">
-										没有找到匹配标的，试试代码、拼音或更完整的名称。
-									</p>
-								) : null}
-
-								{isSearchOpen && searchResults.length > 0 ? (
-									<div className="asset-manager__search-list" role="listbox">
-										{searchResults.map((result) => (
-											<button
-												key={`${result.symbol}-${result.exchange ?? "unknown"}-${result.source ?? "unknown"}`}
-												type="button"
-												className="asset-manager__search-item"
-												onMouseDown={(event) => {
-													event.preventDefault();
-													applySearchResult(result);
-												}}
-											>
-												<strong>{result.name}</strong>
-												<span>{result.symbol}</span>
-												<small>
-													{formatSecurityMarket(result.market)}
-													{result.exchange ? ` · ${result.exchange}` : ""}
-													{result.currency ? ` · ${result.currency}` : ""}
-													{shouldPrefillBroker(result.source) ? ` · ${result.source}` : ""}
-												</small>
-											</button>
-										))}
-									</div>
-								) : null}
-							</div>
-						</label>
-
-						{searchError ? (
-							<div className="asset-manager__message asset-manager__message--error">
-								{searchError}
-							</div>
-						) : null}
-
-						{searchEnabled && draft.symbol ? (
-							<div className="asset-manager__selection-pill">{getSearchLabel(draft)}</div>
-						) : null}
-					</>
+					<HoldingSearchSection
+						draft={draft}
+						searchEnabled={searchEnabled}
+						searchQuery={searchQuery}
+						searchResults={searchResults}
+						searchError={searchError}
+						isSearching={isSearching}
+						isSearchOpen={isSearchOpen}
+						onSearchInputChange={handleSearchInput}
+						onFocus={() => setIsSearchOpen(searchResults.length > 0)}
+						onBlur={() => window.setTimeout(() => setIsSearchOpen(false), 120)}
+						onSelect={applySearchResult}
+						getSearchLabel={getSearchLabel}
+						shouldPrefillBroker={shouldPrefillBroker}
+					/>
 				) : null}
 
-				{isSellTransaction ? (
-					<label className="asset-manager__field">
-						<span>卖出持仓</span>
-						<select
-							aria-label="卖出持仓"
-							value={selectedSellHolding ? getHoldingSelectionKey(selectedSellHolding) : ""}
-							onChange={(event) => handleSellHoldingChange(event.target.value)}
-						>
-							<option value="">请选择一笔当前持仓</option>
-							{sellableHoldings.map((holding) => (
-								<option
-									key={getHoldingSelectionKey(holding)}
-									value={getHoldingSelectionKey(holding)}
-								>
-									{holding.name} ({holding.symbol}) · {formatQuantity(holding.quantity)}
-								</option>
-							))}
-						</select>
-						{selectedSellHolding ? (
-								<p className="asset-manager__helper-text">
-									当前可卖 {formatQuantity(selectedSellHolding.quantity)}
-									{selectedSellHolding.price != null && selectedSellHolding.price > 0
-										? `，当前实时卖出参考价 ${formatPriceAmount(
-											selectedSellHolding.price,
-											selectedSellHolding.price_currency ?? selectedSellHolding.fallback_currency,
-										)}`
-										: ""}
-								</p>
-						) : (
-							<p className="asset-manager__helper-text">
-								只能从当前持仓里选择要卖出的标的
-							</p>
-						)}
-					</label>
-				) : null}
+				<HoldingTransactionFields
+					draft={draft}
+					isEditIntent={isEditIntent}
+					isSellTransaction={isSellTransaction}
+					sellableHoldings={sellableHoldings}
+					selectedSellHolding={selectedSellHolding}
+					shouldShowIdentityFields={shouldShowIdentityFields}
+					quantityLabel={quantityLabel}
+					quantityMin={quantityMin}
+					quantityStep={quantityStep}
+					priceLabel={priceLabel}
+					pricePlaceholder={pricePlaceholder}
+					targetAmountCny={targetAmountCny}
+					dateLabel={dateLabel}
+					datePlaceholder={datePlaceholder}
+					maxStartedOnDate={maxStartedOnDate}
+					searchEnabled={searchEnabled}
+					onUpdateDraft={updateDraft}
+					onQuantityChange={handleQuantityChange}
+					onSellHoldingChange={handleSellHoldingChange}
+					allowsFractionalQuantity={allowsFractionalQuantity}
+					getHoldingSelectionKey={getHoldingSelectionKey}
+				/>
 
-				{shouldShowIdentityFields ? (
-					<div className="asset-manager__field-grid">
-						<label className="asset-manager__field">
-							<span>代码</span>
-							<input
-								required
-								value={draft.symbol}
-								onChange={(event) => updateDraft("symbol", event.target.value)}
-								placeholder="选择后自动填入"
-								readOnly={searchEnabled}
-							/>
-						</label>
-
-						<label className="asset-manager__field">
-							<span>名称</span>
-							<input
-								required
-								value={draft.name}
-								onChange={(event) => updateDraft("name", event.target.value)}
-								placeholder="选择后自动填入"
-								readOnly={searchEnabled}
-							/>
-						</label>
-					</div>
-				) : null}
-
-				{isEditIntent ? (
-					<div className="asset-manager__helper-block">
-						<p>
-							当前持仓：{draft.name || "未命名标的"}
-							{draft.symbol ? ` (${draft.symbol})` : ""}
-							{draft.market ? ` · ${formatSecurityMarket(draft.market)}` : ""}
-						</p>
-					</div>
-				) : null}
-
-				<div className="asset-manager__field-grid">
-					{isSellTransaction || isEditIntent ? (
-						<label className="asset-manager__field">
-							<span>市场</span>
-							<input
-								value={draft.market ? formatSecurityMarket(draft.market) : ""}
-								placeholder={
-									isSellTransaction ? "选择持仓后自动带出" : "当前持仓市场"
-								}
-								readOnly
-							/>
-						</label>
-					) : (
-						<label className="asset-manager__field">
-							<span>市场</span>
-							<select
-								value={draft.market}
-								onChange={(event) =>
-									updateDraft(
-										"market",
-										event.target.value as HoldingFormDraft["market"],
-									)
-								}
-							>
-								<option value="">请选择市场</option>
-								{SECURITY_MARKET_OPTIONS.map((option) => (
-									<option key={option.value} value={option.value}>
-										{option.label}
-									</option>
-								))}
-							</select>
-						</label>
-					)}
-
-					<label className="asset-manager__field">
-						<span>{quantityLabel}</span>
-						<input
-							required
-							type="number"
-							min={quantityMin}
-							max={
-								isSellTransaction && selectedSellHolding
-									? String(selectedSellHolding.quantity)
-									: undefined
-							}
-							step={quantityStep}
-							value={draft.quantity}
-							onChange={(event) => handleQuantityChange(event.target.value)}
-							placeholder={allowsFractionalQuantity(draft.market) ? "1.0000" : "100"}
-						/>
-					</label>
-
-				</div>
-
-				<div className="asset-manager__field-grid">
-					{isSellTransaction || isEditIntent ? (
-						<label className="asset-manager__field">
-							<span>当前币种</span>
-							<input
-								required
-								value={draft.fallback_currency}
-								placeholder={isSellTransaction ? "选择持仓后自动带出" : "当前持仓币种"}
-								readOnly
-							/>
-						</label>
-					) : (
-						<label className="asset-manager__field">
-							<span>当前币种</span>
-							<select
-								required
-								value={draft.fallback_currency}
-								onChange={(event) =>
-									updateDraft(
-										"fallback_currency",
-										event.target.value as HoldingFormDraft["fallback_currency"],
-									)
-								}
-							>
-								<option value="">请选择当前币种</option>
-								{SUPPORTED_CURRENCY_OPTIONS.map((option) => (
-									<option key={option.value} value={option.value}>
-										{option.label}
-									</option>
-								))}
-							</select>
-						</label>
-					)}
-
-					<label className="asset-manager__field">
-						<span>目标币种</span>
-						<input value={TARGET_DISPLAY_CURRENCY} readOnly />
-					</label>
-				</div>
-
-				<div className="asset-manager__field-grid">
-					<label className="asset-manager__field">
-						<span>{priceLabel}</span>
-						<input
-							type="number"
-							min="0.0001"
-							step="0.0001"
-							value={draft.cost_basis_price}
-							onChange={(event) => updateDraft("cost_basis_price", event.target.value)}
-							placeholder={pricePlaceholder}
-						/>
-					</label>
-
-					<label className="asset-manager__field">
-						<span>目标币种金额（CNY）</span>
-						<input
-							value={targetAmountCny != null ? formatCnyAmount(targetAmountCny) : ""}
-							placeholder="按当前汇率自动计算"
-							readOnly
-						/>
-					</label>
-				</div>
-
-				{isSellTransaction ? (
-					<>
-						<label className="asset-manager__field">
-							<span>卖出回款去向</span>
-							<select
-								aria-label="卖出回款去向"
-								value={sellProceedsSelectionValue}
-								onChange={(event) =>
-									updateDraft(
-										"sell_proceeds_handling",
-										event.target.value as HoldingFormDraft["sell_proceeds_handling"],
-									)
-								}
-							>
-								{availableSellProceedsOptions.map((option) => (
-									<option key={option.value} value={option.value}>
-										{option.label}
-									</option>
-								))}
-							</select>
-							{!canSelectExistingCashAccount ? (
-								<p className="asset-manager__helper-text">
-									当前没有现金账户 如需并入现有账户 请先新增现金账户
-								</p>
-							) : null}
-						</label>
-
-						{shouldMergeIntoExistingCash ? (
-							<label className="asset-manager__field">
-								<span>目标现金账户</span>
-								<select
-									aria-label="目标现金账户"
-									value={draft.sell_proceeds_account_id}
-									onChange={(event) =>
-										updateDraft("sell_proceeds_account_id", event.target.value)
-									}
-								>
-									<option value="">请选择一个现金账户</option>
-									{cashAccounts.map((account) => (
-										<option key={account.id} value={String(account.id)}>
-											{formatCashAccountOptionLabel(account)}
-										</option>
-									))}
-								</select>
-								{!canSelectExistingCashAccount ? (
-									<p className="asset-manager__helper-text">
-										当前还没有现金账户 请先新增现金账户 或改用自动新建现金账户
-									</p>
-								) : (
-									<p className="asset-manager__helper-text">
-										系统会按目标账户币种自动换算并累加余额 同时在备注里记录本次卖出来源
-									</p>
-								)}
-							</label>
-						) : null}
-					</>
-				) : null}
-
-				{!isEditIntent && !isSellTransaction ? (
-					<label className="asset-manager__field">
-						<span>买入扣款账户</span>
-						<select
-							value={draft.buy_funding_account_id}
-							onChange={(event) =>
-								updateDraft("buy_funding_account_id", event.target.value)
-							}
-						>
-							<option value="">无（不从现金账户扣款）</option>
-							{cashAccounts.map((account) => (
-								<option key={account.id} value={String(account.id)}>
-									{formatCashAccountOptionLabel(account)}
-								</option>
-							))}
-						</select>
-						{!canSelectBuyFundingCashAccount ? (
-							<p className="asset-manager__helper-text">
-								当前没有现金账户 如需记录买入扣款 请先新增现金账户
-							</p>
-						) : null}
-					</label>
-				) : null}
-
-				{!isEditIntent ? (
-					<label className="asset-manager__field">
-						<span>账户 / 来源</span>
-						<input
-							value={draft.broker}
-							onChange={(event) => updateDraft("broker", event.target.value)}
-							placeholder="搜索后自动填入，可手动修改"
-						/>
-					</label>
-				) : null}
-
-					<label className="asset-manager__field">
-						<span>{dateLabel}</span>
-						<DatePickerField
-							value={draft.started_on}
-							onChange={(nextValue) => updateDraft("started_on", nextValue)}
-							maxDate={maxStartedOnDate}
-							placeholder={datePlaceholder}
-						/>
-					</label>
-
-				{!isEditIntent ? (
-					<label className="asset-manager__field">
-						<span>备注</span>
-						<textarea
-							value={draft.note}
-							onChange={(event) => updateDraft("note", event.target.value)}
-							placeholder="可选"
-						/>
-					</label>
-				) : null}
+				<HoldingCashSettlementFields
+					draft={draft}
+					isEditIntent={isEditIntent}
+					isSellTransaction={isSellTransaction}
+					shouldMergeIntoExistingCash={shouldMergeIntoExistingCash}
+					canSelectExistingCashAccount={canSelectExistingCashAccount}
+					canSelectBuyFundingCashAccount={canSelectBuyFundingCashAccount}
+					availableSellProceedsOptions={availableSellProceedsOptions}
+					sellProceedsSelectionValue={sellProceedsSelectionValue}
+					cashAccounts={cashAccounts}
+					onUpdateDraft={updateDraft}
+					formatCashAccountOptionLabel={formatCashAccountOptionLabel}
+				/>
 
 				<div className="asset-manager__form-actions">
 					<button
@@ -1324,93 +991,12 @@ export function HoldingForm({
 			</form>
 
 			{pendingMergePreview ? (
-				<div className="asset-manager__modal" role="dialog" aria-modal="true" aria-labelledby="holding-merge-title">
-					<button
-						type="button"
-						className="asset-manager__modal-backdrop"
-						onClick={handleDismissMergePreview}
-						aria-label="关闭重复持仓提示"
-					/>
-					<div className="asset-manager__modal-panel">
-						<div className="asset-manager__modal-head">
-							<div>
-								<p className="asset-manager__eyebrow">DUPLICATE HOLDING</p>
-								<h3 id="holding-merge-title">已存在相同投资标的</h3>
-								<p>
-									{pendingMergePreview.targetRecord.name}（{pendingMergePreview.targetRecord.symbol}）
-									已经在持仓列表中，确认后会按追加买入合并到原条目。
-								</p>
-							</div>
-						</div>
-
-						<div className="asset-manager__preview-grid">
-							<div className="asset-manager__preview-item">
-								<span>原持仓数量</span>
-								<strong>{pendingMergePreview.existingQuantity}</strong>
-							</div>
-							<div className="asset-manager__preview-item">
-								<span>本次追加数量</span>
-								<strong>{pendingMergePreview.incomingQuantity}</strong>
-							</div>
-							<div className="asset-manager__preview-item">
-								<span>合并后数量</span>
-								<strong>{pendingMergePreview.mergedQuantity}</strong>
-							</div>
-							<div className="asset-manager__preview-item">
-								<span>合并后持仓均价</span>
-								<strong>
-									{formatPreviewPrice(
-										pendingMergePreview.mergedCostBasis,
-										pendingMergePreview.mergedPayload.fallback_currency,
-									)}
-								</strong>
-							</div>
-							<div className="asset-manager__preview-item">
-								<span>已知成本总额</span>
-								<strong>
-									{formatPreviewPrice(
-										pendingMergePreview.knownCostTotal,
-										pendingMergePreview.mergedPayload.fallback_currency,
-									)}
-								</strong>
-							</div>
-							<div className="asset-manager__preview-item">
-								<span>预估收益率</span>
-								<strong>
-									{pendingMergePreview.estimatedReturnPct != null
-										? `${pendingMergePreview.estimatedReturnPct.toFixed(2)}%`
-										: "待计算"}
-								</strong>
-							</div>
-						</div>
-
-						<div className="asset-manager__helper-block">
-							<p>
-								系统会用原持仓数量 x 原持仓价，加上本次数量 x 本次持仓价，计算新的加权均价，
-								然后直接覆盖原条目。
-							</p>
-						</div>
-
-						<div className="asset-manager__form-actions">
-							<button
-								type="button"
-								className="asset-manager__button"
-								onClick={() => void handleConfirmMerge()}
-								disabled={isSubmitting}
-							>
-								{isSubmitting ? "处理中..." : "确认追加"}
-							</button>
-							<button
-								type="button"
-								className="asset-manager__button asset-manager__button--secondary"
-								onClick={handleDismissMergePreview}
-								disabled={isSubmitting}
-							>
-								返回修改
-							</button>
-						</div>
-					</div>
-				</div>
+				<HoldingMergePreviewDialog
+					preview={pendingMergePreview}
+					busy={isSubmitting}
+					onConfirm={() => void handleConfirmMerge()}
+					onDismiss={handleDismissMergePreview}
+				/>
 			) : null}
 		</section>
 	);

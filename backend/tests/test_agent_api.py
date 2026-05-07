@@ -13,19 +13,22 @@ from starlette.requests import Request
 import app.database as database
 from app import runtime_state
 import app.main as main
-from app.main import (
+from app.services.agent_service import (
 	create_agent_task,
-	create_cash_transfer,
-	create_account,
-	create_holding_transaction,
 	get_agent_context,
-	get_current_user,
-	get_security_quote,
 	list_agent_registrations,
 	list_agent_tasks,
-	list_all_holding_transactions,
+)
+from app.services.auth_service import get_current_user, revoke_agent_token
+from app.services.cash_account_service import (
+	create_account,
+	create_cash_transfer,
 	list_asset_mutation_audits,
-	revoke_agent_token,
+)
+from app.services.holding_transaction_service import (
+	create_holding_transaction,
+	get_security_quote,
+	list_all_holding_transactions,
 )
 from app.models import (
 	AgentAccessToken,

@@ -1,9 +1,8 @@
 from datetime import datetime, timezone
 
-import app.main as main
-
 from app.analytics import build_return_timeline, build_timeline
 from app.models import HoldingPerformanceSnapshot, PortfolioSnapshot
+from app.services.common_service import _is_current_minute
 
 
 def make_snapshot(timestamp: datetime, total: float) -> PortfolioSnapshot:
@@ -112,11 +111,11 @@ def test_is_current_minute_matches_same_bucket() -> None:
 	now = datetime(2026, 3, 1, 3, 15, 42, tzinfo=timezone.utc)
 	cached_at = datetime(2026, 3, 1, 3, 15, 1, tzinfo=timezone.utc)
 
-	assert main._is_current_minute(cached_at, now) is True
+	assert _is_current_minute(cached_at, now) is True
 
 
 def test_is_current_minute_rejects_previous_bucket() -> None:
 	now = datetime(2026, 3, 1, 3, 15, 0, tzinfo=timezone.utc)
 	cached_at = datetime(2026, 3, 1, 3, 14, 59, tzinfo=timezone.utc)
 
-	assert main._is_current_minute(cached_at, now) is False
+	assert _is_current_minute(cached_at, now) is False

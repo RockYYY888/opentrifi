@@ -11,11 +11,11 @@ import app.database as database
 from app import runtime_state
 import app.main as main
 import app.worker as worker
-from app.main import create_holding_transaction
 from app.models import HOLDING_HISTORY_SYNC_STATUSES, HoldingHistorySyncRequest, OutboxJob, UserAccount, utc_now
 from app.schemas import SecurityHoldingTransactionCreate
 from app.security import hash_password
-from app.services import dashboard_service, history_service, job_service, service_context
+from app.services import dashboard_query_service, dashboard_service, history_service, job_service, service_context
+from app.services.holding_transaction_service import create_holding_transaction
 
 
 class StaticDashboardMarketDataClient:
@@ -442,7 +442,7 @@ def test_get_cached_dashboard_does_not_execute_snapshot_jobs_inline(
 	monkeypatch.setattr(history_service, "_rebuild_user_portfolio_snapshots", fail_sync_rebuild)
 	monkeypatch.setattr(service_context, "market_data_client", StaticDashboardMarketDataClient())
 
-	dashboard = asyncio.run(main._get_cached_dashboard(session, current_user))
+	dashboard = asyncio.run(dashboard_query_service._get_cached_dashboard(session, current_user))
 
 	assert dashboard.total_value_cny == 0
 	job = session.exec(select(OutboxJob)).one()

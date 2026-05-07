@@ -11,32 +11,43 @@ from sqlmodel import Session, select
 
 from app import runtime_state
 import app.main as main
-from app.main import (
-	_authenticate_user_account,
-	_create_user_account,
-	_coerce_utc_datetime,
-	_update_user_email,
-	create_cash_ledger_adjustment,
+from app.runtime_state import LiveHoldingReturnPoint
+from app.services.asset_entry_service import (
 	create_fixed_asset,
-	create_cash_transfer,
-	delete_cash_ledger_adjustment,
-	_persist_hour_snapshot,
-	_persist_holdings_return_snapshot,
-	_reset_user_password_with_email,
-	_summarize_holdings_return_state,
 	create_liability,
 	create_other_asset,
+)
+from app.services.auth_service import (
+	_authenticate_user_account,
+	_create_user_account,
+	_update_user_email,
+	_reset_user_password_with_email,
+)
+from app.services.cash_account_service import (
 	create_account,
-	create_holding,
-	create_holding_legacy_endpoint,
-	create_holding_transaction,
+	create_cash_ledger_adjustment,
+	create_cash_transfer,
+	delete_cash_ledger_adjustment,
 	delete_account,
-	delete_holding,
-	delete_holding_transaction,
-	list_holding_transactions,
+	list_accounts,
 	update_account,
 	update_cash_ledger_adjustment,
 	update_cash_transfer,
+)
+from app.services.common_service import _coerce_utc_datetime
+from app.services.dashboard_live_service import (
+	_persist_hour_snapshot,
+	_persist_holdings_return_snapshot,
+	_summarize_holdings_return_state,
+)
+from app.services.holding_transaction_service import (
+	create_holding,
+	create_holding_legacy_endpoint,
+	create_holding_transaction,
+	delete_holding,
+	delete_holding_transaction,
+	list_holding_transactions,
+	list_holdings,
 	update_holding,
 	update_holding_transaction,
 )
@@ -76,10 +87,17 @@ from app.schemas import (
 	SecurityHoldingTransactionUpdate,
 	SecurityHoldingUpdate,
 	UserEmailUpdate,
+	ValuedHolding,
 )
 from app.security import verify_password
 from app.services.market_data import Quote, QuoteLookupError
-from app.services import common_service, dashboard_service, history_service, service_context
+from app.services import (
+	common_service,
+	dashboard_query_service,
+	dashboard_service,
+	history_service,
+	service_context,
+)
 import app.services.dashboard_query_service as dashboard_query_service
 import app.services.realtime_analytics_service as realtime_analytics_service
 
@@ -684,7 +702,7 @@ def test_persist_hour_snapshot_compacts_rows_within_the_same_hour(session: Sessi
 
 	assert len(snapshots) == 1
 	assert snapshots[0].total_value_cny == 1500
-	assert main._coerce_utc_datetime(snapshots[0].created_at) == datetime(
+	assert _coerce_utc_datetime(snapshots[0].created_at) == datetime(
 		2026,
 		3,
 		1,
@@ -724,7 +742,7 @@ def test_persist_holdings_return_snapshot_compacts_rows_within_the_same_hour(
 		"tester",
 		datetime(2026, 3, 1, 3, 0, tzinfo=timezone.utc),
 		3.5,
-		(main.LiveHoldingReturnPoint(symbol="0700.HK", name="腾讯控股", return_pct=4.25),),
+		(LiveHoldingReturnPoint(symbol="0700.HK", name="腾讯控股", return_pct=4.25),),
 	)
 
 	snapshots = session.exec(
@@ -741,7 +759,7 @@ def test_persist_holdings_return_snapshot_compacts_rows_within_the_same_hour(
 def test_summarize_holdings_return_state_returns_weighted_aggregate() -> None:
 	aggregate_return_pct, holding_points = _summarize_holdings_return_state(
 		[
-			main.ValuedHolding(
+			ValuedHolding(
 				id=1,
 				symbol="0700.HK",
 				name="腾讯控股",
@@ -755,7 +773,7 @@ def test_summarize_holdings_return_state_returns_weighted_aggregate() -> None:
 				value_cny=44000,
 				return_pct=10.0,
 			),
-			main.ValuedHolding(
+			ValuedHolding(
 				id=2,
 				symbol="9988.HK",
 				name="阿里巴巴-W",
@@ -794,7 +812,7 @@ def test_list_accounts_returns_valued_balances(
 	)
 	monkeypatch.setattr(service_context, "market_data_client", StaticMarketDataClient())
 
-	accounts = asyncio.run(main.list_accounts(current_user, session))
+	accounts = asyncio.run(list_accounts(current_user, session))
 
 	assert len(accounts) == 1
 	assert accounts[0].fx_to_cny == 7.0
@@ -820,7 +838,7 @@ def test_list_accounts_scopes_results_to_current_user(
 	)
 	monkeypatch.setattr(service_context, "market_data_client", StaticMarketDataClient())
 
-	accounts = asyncio.run(main.list_accounts(second_user, session))
+	accounts = asyncio.run(list_accounts(second_user, session))
 
 	assert accounts == []
 
@@ -1823,7 +1841,7 @@ def test_build_dashboard_replays_total_series_from_cash_ledger_and_holding_trans
 		session,
 	)
 
-	dashboard = asyncio.run(main._build_dashboard(session, current_user))
+	dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, current_user))
 
 	assert dashboard.cash_value_cny == 300.0
 	assert dashboard.holdings_value_cny == 700.0
@@ -1857,7 +1875,7 @@ def test_build_dashboard_persists_previous_live_hour_snapshot_when_hour_rolls(
 	second_now = first_now + timedelta(hours=1, minutes=5)
 	monkeypatch.setattr(dashboard_query_service, "utc_now", lambda: first_now)
 
-	first_dashboard = asyncio.run(main._build_dashboard(session, current_user))
+	first_dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, current_user))
 	first_snapshots = list(
 		session.exec(
 			select(PortfolioSnapshot)
@@ -1870,7 +1888,7 @@ def test_build_dashboard_persists_previous_live_hour_snapshot_when_hour_rolls(
 	assert len(first_snapshots) == 0
 
 	monkeypatch.setattr(dashboard_query_service, "utc_now", lambda: second_now)
-	second_dashboard = asyncio.run(main._build_dashboard(session, current_user))
+	second_dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, current_user))
 	second_snapshots = list(
 		session.exec(
 			select(PortfolioSnapshot)
@@ -1957,7 +1975,7 @@ def test_realtime_sampler_populates_second_and_minute_dashboard_series(
 	assert any(row.scope == "HOLDING" and row.symbol == "AAPL" for row in return_rows)
 
 	monkeypatch.setattr(dashboard_query_service, "utc_now", lambda: second_sample_at)
-	dashboard = asyncio.run(main._build_dashboard(session, current_user))
+	dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, current_user))
 
 	assert [point.label for point in dashboard.second_series] == [
 		"03-26 11:00:01",
@@ -2497,7 +2515,7 @@ def test_list_holdings_returns_enriched_quote_fields(
 	)
 	monkeypatch.setattr(service_context, "market_data_client", StaticMarketDataClient())
 
-	holdings = asyncio.run(main.list_holdings(current_user, session))
+	holdings = asyncio.run(list_holdings(current_user, session))
 
 	assert len(holdings) == 1
 	assert holdings[0].price == 100.0
@@ -2710,7 +2728,7 @@ def test_build_dashboard_subtracts_liabilities_from_total(
 	)
 	monkeypatch.setattr(service_context, "market_data_client", StaticMarketDataClient())
 
-	dashboard = asyncio.run(main._build_dashboard(session, current_user))
+	dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, current_user))
 
 	assert dashboard.cash_value_cny == 1000.0
 	assert dashboard.fixed_assets_value_cny == 500_000.0
@@ -2748,7 +2766,7 @@ def test_build_dashboard_converts_usd_liabilities_to_cny(
 	)
 	monkeypatch.setattr(service_context, "market_data_client", StaticMarketDataClient())
 
-	dashboard = asyncio.run(main._build_dashboard(session, current_user))
+	dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, current_user))
 
 	assert dashboard.usd_cny_rate == 7.0
 	assert dashboard.hkd_cny_rate == 7.0
@@ -2781,7 +2799,7 @@ def test_build_dashboard_hides_fallback_cache_warning_for_non_admin(
 		lambda *_args, **_kwargs: False,
 	)
 
-	dashboard = asyncio.run(main._build_dashboard(session, current_user))
+	dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, current_user))
 
 	assert not any("已回退到最近缓存值" in warning for warning in dashboard.warnings)
 	assert WarningMarketDataClient.DELAY_WARNING in dashboard.warnings
@@ -2811,7 +2829,7 @@ def test_build_dashboard_keeps_fallback_cache_warning_for_admin(
 		lambda *_args, **_kwargs: False,
 	)
 
-	dashboard = asyncio.run(main._build_dashboard(session, current_user))
+	dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, current_user))
 
 	assert WarningMarketDataClient.FALLBACK_WARNING in dashboard.warnings
 	assert WarningMarketDataClient.DELAY_WARNING in dashboard.warnings
@@ -2911,7 +2929,7 @@ def test_process_pending_holding_history_sync_rebuilds_hourly_rows(
 		session,
 	)
 
-	asyncio.run(main._process_pending_holding_history_sync_requests(session, limit=1))
+	asyncio.run(history_service._process_pending_holding_history_sync_requests(session, limit=1))
 
 	request = session.exec(
 		select(HoldingHistorySyncRequest).where(
@@ -2934,8 +2952,8 @@ def test_process_pending_holding_history_sync_rebuilds_hourly_rows(
 		),
 	)
 	assert holding_rows
-	assert main._coerce_utc_datetime(holding_rows[0].created_at) == start_bucket
-	assert main._coerce_utc_datetime(holding_rows[-1].created_at) == end_bucket
+	assert _coerce_utc_datetime(holding_rows[0].created_at) == start_bucket
+	assert _coerce_utc_datetime(holding_rows[-1].created_at) == end_bucket
 
 	total_rows = list(
 		session.exec(
@@ -3003,7 +3021,7 @@ def test_process_pending_holding_history_sync_uses_transaction_state_per_period(
 		session,
 	)
 
-	asyncio.run(main._process_pending_holding_history_sync_requests(session, limit=1))
+	asyncio.run(history_service._process_pending_holding_history_sync_requests(session, limit=1))
 
 	holding_rows = list(
 		session.exec(
@@ -3017,7 +3035,7 @@ def test_process_pending_holding_history_sync_uses_transaction_state_per_period(
 	assert holding_rows
 
 	row_by_hour = {
-		main._coerce_utc_datetime(row.created_at): row.return_pct for row in holding_rows
+		_coerce_utc_datetime(row.created_at): row.return_pct for row in holding_rows
 	}
 	assert row_by_hour[first_bucket] == Decimal("0")
 	assert row_by_hour[second_trade_bucket] == Decimal("11.11000000")
@@ -3116,7 +3134,7 @@ def test_process_pending_holding_history_sync_preserves_prior_hours_for_backfill
 		session,
 	)
 
-	asyncio.run(main._process_pending_holding_history_sync_requests(session, limit=1))
+	asyncio.run(history_service._process_pending_holding_history_sync_requests(session, limit=1))
 
 	portfolio_rows = list(
 		session.exec(
@@ -3128,7 +3146,7 @@ def test_process_pending_holding_history_sync_preserves_prior_hours_for_backfill
 	assert portfolio_rows
 
 	row_by_hour = {
-		main._coerce_utc_datetime(row.created_at): row.total_value_cny for row in portfolio_rows
+		_coerce_utc_datetime(row.created_at): row.total_value_cny for row in portfolio_rows
 	}
 	assert row_by_hour[before_second_buy_bucket] == Decimal("280000.00000000")
 	assert row_by_hour[second_buy_bucket] == Decimal("308000.00000000")
@@ -3207,7 +3225,7 @@ def test_process_pending_holding_history_sync_applies_holding_adjustment_on_effe
 		session,
 	)
 
-	asyncio.run(main._process_pending_holding_history_sync_requests(session, limit=1))
+	asyncio.run(history_service._process_pending_holding_history_sync_requests(session, limit=1))
 
 	portfolio_rows = list(
 		session.exec(
@@ -3219,7 +3237,7 @@ def test_process_pending_holding_history_sync_applies_holding_adjustment_on_effe
 	assert portfolio_rows
 
 	row_by_hour = {
-		main._coerce_utc_datetime(row.created_at): row.total_value_cny for row in portfolio_rows
+		_coerce_utc_datetime(row.created_at): row.total_value_cny for row in portfolio_rows
 	}
 	assert row_by_hour[before_adjust_bucket] == Decimal("140000.00000000")
 	assert row_by_hour[adjust_bucket] == Decimal("196000.00000000")
@@ -3396,7 +3414,7 @@ def test_get_dashboard_refresh_clears_runtime_cache_and_forces_rebuild(
 	)
 	monkeypatch.setattr(dashboard_service, "_get_cached_dashboard", fake_get_cached_dashboard)
 
-	asyncio.run(main.get_dashboard(current_user, session, True))
+	asyncio.run(dashboard_query_service.get_dashboard(current_user, session, True))
 
 	assert refresh_calls["cache_clear"] == 1
 	assert refresh_calls["global_sample"] == 1
@@ -3471,8 +3489,8 @@ def test_get_dashboard_refresh_only_clears_runtime_cache_once_within_global_wind
 	monkeypatch.setattr(dashboard_service, "_get_cached_dashboard", fake_get_cached_dashboard)
 	runtime_state.set_last_global_force_refresh_at(None)
 
-	asyncio.run(main.get_dashboard(current_user, session, True))
-	asyncio.run(main.get_dashboard(current_user, session, True))
+	asyncio.run(dashboard_query_service.get_dashboard(current_user, session, True))
+	asyncio.run(dashboard_query_service.get_dashboard(current_user, session, True))
 
 	assert refresh_calls["cache_clear"] == 1
 	assert refresh_calls["global_sample"] == 1
@@ -3530,7 +3548,7 @@ def test_refresh_user_dashboards_clears_market_data_once_per_cycle(
 	monkeypatch.setattr(service_context, "market_data_client", RefreshAwareClient())
 	monkeypatch.setattr(dashboard_service, "_get_cached_dashboard", fake_get_cached_dashboard)
 
-	asyncio.run(main._refresh_user_dashboards(session, [current_user], clear_market_data=True))
+	asyncio.run(dashboard_query_service._refresh_user_dashboards(session, [current_user], clear_market_data=True))
 
 	assert refresh_calls["cache_clear"] == 1
 	assert refresh_calls["dashboard_rebuild"] == 1

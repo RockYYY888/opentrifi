@@ -4,23 +4,27 @@ import pytest
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
-from app.main import (
+from app.services.feedback_admin_service import (
 	classify_feedback_for_admin,
 	close_feedback_for_admin,
-	create_release_note_for_admin,
-	get_feedback_summary,
-	hide_inbox_message_for_current_user,
 	list_feedback_for_admin,
-	list_feedback_for_current_user,
 	list_system_feedback_for_admin,
 	list_user_feedback_for_admin,
-	list_release_notes_for_current_user,
+	reply_to_feedback_for_admin,
+)
+from app.services.feedback_user_service import (
+	get_feedback_summary,
+	hide_inbox_message_for_current_user,
+	list_feedback_for_current_user,
 	mark_feedback_seen_for_current_user,
+	submit_feedback,
+)
+from app.services.release_note_service import (
+	create_release_note_for_admin,
+	list_release_notes_for_current_user,
 	mark_release_notes_seen_for_current_user,
 	publish_changelog_release_note_for_admin,
 	publish_release_note_for_admin,
-	reply_to_feedback_for_admin,
-	submit_feedback,
 )
 from app.models import ReleaseNoteDelivery, UserAccount, UserFeedback
 from app.schemas import (

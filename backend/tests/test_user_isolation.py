@@ -8,23 +8,27 @@ from sqlmodel import Session, select
 
 from app import runtime_state
 import app.main as main
-from app.main import (
-	create_account,
+from app.services.asset_entry_service import (
 	create_fixed_asset,
-	create_holding,
 	create_liability,
 	create_other_asset,
-	delete_holding,
 	delete_liability,
-	list_accounts,
 	list_fixed_assets,
-	list_holdings,
 	list_liabilities,
 	list_other_assets,
-	submit_feedback,
-	update_account,
 	update_fixed_asset,
 	update_other_asset,
+)
+from app.services.cash_account_service import (
+	create_account,
+	list_accounts,
+	update_account,
+)
+from app.services.feedback_user_service import submit_feedback
+from app.services.holding_transaction_service import (
+	create_holding,
+	delete_holding,
+	list_holdings,
 )
 from app.models import UserAccount, UserFeedback
 from app.schemas import (
@@ -39,7 +43,7 @@ from app.schemas import (
 	UserFeedbackCreate,
 )
 from app.services.market_data import Quote
-from app.services import service_context
+from app.services import dashboard_query_service, service_context
 
 
 class StaticMarketDataClient:
@@ -163,8 +167,8 @@ def test_cached_dashboard_keeps_each_user_in_a_separate_cache_entry(
 		session,
 	)
 
-	first_dashboard = asyncio.run(main._get_cached_dashboard(session, first_user))
-	second_dashboard = asyncio.run(main._get_cached_dashboard(session, second_user))
+	first_dashboard = asyncio.run(dashboard_query_service._get_cached_dashboard(session, first_user))
+	second_dashboard = asyncio.run(dashboard_query_service._get_cached_dashboard(session, second_user))
 
 	assert first_dashboard.total_value_cny == 100.0
 	assert second_dashboard.total_value_cny == 250.0
@@ -214,7 +218,7 @@ def test_dashboard_only_includes_assets_belonging_to_the_current_user(
 		session,
 	)
 
-	dashboard = asyncio.run(main._build_dashboard(session, second_user))
+	dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, second_user))
 
 	assert dashboard.total_value_cny == 200.0
 	assert dashboard.cash_value_cny == 200.0

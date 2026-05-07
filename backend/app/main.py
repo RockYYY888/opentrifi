@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -23,12 +22,7 @@ from app.runtime_state import (
 	login_attempt_states,
 	validate_runtime_redis_connection,
 )
-from app.services import (
-	core_support,
-	dashboard_service,
-	history_service,
-	service_context,
-)
+from app.services import service_context
 
 logger = logging.getLogger(__name__)
 settings = service_context.settings
@@ -108,7 +102,3 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
-
-
-def __getattr__(name: str) -> Any:
-	return getattr(core_support, name)

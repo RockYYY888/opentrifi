@@ -9,17 +9,18 @@ from sqlmodel import Session, select
 from app import runtime_state
 import app.main as main
 from app.analytics import bucket_start_utc
-from app.main import (
+from app.services.cash_account_service import (
 	create_account,
-	create_dashboard_correction,
 	delete_account,
 	update_account,
 )
+from app.services.dashboard_correction_service import create_dashboard_correction
 from app.models import AssetMutationAudit, PortfolioSnapshot, UserAccount
 from app.schemas import CashAccountCreate, CashAccountUpdate, DashboardCorrectionCreate
 from app.services.asset_record_service import list_asset_records
 from app.services.holding_transaction_service import create_holding_transaction
-from app.services import service_context
+from app.services import dashboard_query_service, service_context
+from app.services.asset_entry_service import create_fixed_asset
 from app.schemas import FixedAssetCreate, SecurityHoldingTransactionCreate
 
 
@@ -145,7 +146,7 @@ def test_dashboard_correction_override_and_delete_are_applied_to_hour_series(
 		session,
 	)
 
-	dashboard = asyncio.run(main._build_dashboard(session, user))
+	dashboard = asyncio.run(dashboard_query_service._build_dashboard(session, user))
 	bucket_utc = bucket_start_utc(older_point_at, "hour")
 
 	assert len(dashboard.hour_series) == 1
@@ -248,7 +249,7 @@ def test_asset_records_classify_user_system_and_investment_sell_profit(
 		session,
 		None,
 	)
-	main.create_fixed_asset(
+	create_fixed_asset(
 		FixedAssetCreate(
 			name="管理员录入房产",
 			category="REAL_ESTATE",
