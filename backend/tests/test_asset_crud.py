@@ -78,7 +78,7 @@ from app.schemas import (
 	UserEmailUpdate,
 )
 from app.security import verify_password
-from app.services.market_data import Quote
+from app.services.market_data import Quote, QuoteLookupError
 from app.services import common_service, dashboard_service, history_service, service_context
 import app.services.dashboard_query_service as dashboard_query_service
 import app.services.realtime_analytics_service as realtime_analytics_service
@@ -2093,6 +2093,167 @@ def test_realtime_sampler_samples_all_users_with_one_quote_fetch_per_unique_symb
 		)
 	}
 	assert portfolio_user_ids == {first_user.username, second_user.username}
+
+
+def test_realtime_sampler_keeps_no_asset_users_in_batch_without_writing_snapshots(
+	session: Session,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	current_user = make_user(session, "empty_realtime_user")
+	monkeypatch.setattr(service_context, "market_data_client", StaticMarketDataClient())
+
+	stats = asyncio.run(
+		realtime_analytics_service._sample_realtime_analytics_once_with_session(
+			session,
+			sampled_at=datetime(2026, 3, 26, 3, 0, 1, tzinfo=timezone.utc),
+		),
+	)
+
+	assert stats.user_count == 1
+	assert stats.unique_symbol_count == 0
+	assert not list(
+		session.exec(
+			select(RealtimePortfolioSnapshot).where(
+				RealtimePortfolioSnapshot.user_id == current_user.username,
+			),
+		),
+	)
+	assert not list(
+		session.exec(
+			select(RealtimeHoldingPerformanceSnapshot).where(
+				RealtimeHoldingPerformanceSnapshot.user_id == current_user.username,
+			),
+		),
+	)
+
+
+def test_realtime_sampler_records_market_data_failures_without_dropping_cash_snapshot(
+	session: Session,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	current_user = make_user(session, "quote_failure_user")
+	create_account(
+		CashAccountCreate(
+			name="主账户",
+			platform="Bank",
+			currency="CNY",
+			balance=1000,
+			account_type="BANK",
+		),
+		current_user,
+		session,
+	)
+	create_holding(
+		SecurityHoldingCreate(
+			symbol="AAPL",
+			name="Apple",
+			quantity=1,
+			fallback_currency="USD",
+			cost_basis_price=100,
+			market="US",
+			started_on=date(2026, 3, 26),
+		),
+		current_user,
+		session,
+	)
+
+	class FailingQuoteMarketDataClient(StaticMarketDataClient):
+		async def fetch_quote(
+			self,
+			symbol: str,
+			market: str | None = None,
+			*,
+			prefer_stale: bool = False,
+			schedule_stale_refresh: bool = True,
+		) -> tuple[Quote, list[str]]:
+			del symbol, market, prefer_stale, schedule_stale_refresh
+			raise QuoteLookupError("provider unavailable")
+
+	monkeypatch.setattr(service_context, "market_data_client", FailingQuoteMarketDataClient())
+
+	stats = asyncio.run(
+		realtime_analytics_service._sample_realtime_analytics_once_with_session(
+			session,
+			sampled_at=datetime(2026, 3, 26, 3, 0, 1, tzinfo=timezone.utc),
+		),
+	)
+
+	portfolio_rows = list(
+		session.exec(
+			select(RealtimePortfolioSnapshot).where(
+				RealtimePortfolioSnapshot.user_id == current_user.username,
+			),
+		),
+	)
+	return_rows = list(
+		session.exec(
+			select(RealtimeHoldingPerformanceSnapshot).where(
+				RealtimeHoldingPerformanceSnapshot.user_id == current_user.username,
+			),
+		),
+	)
+
+	assert stats.user_count == 1
+	assert stats.unique_symbol_count == 1
+	assert stats.quote_failure_count == 1
+	assert stats.fx_failure_count == 0
+	assert len(portfolio_rows) == 1
+	assert portfolio_rows[0].total_value_cny == Decimal("1000.00000000")
+	assert return_rows == []
+
+
+def test_realtime_sampler_purges_expired_snapshots_in_bulk(session: Session) -> None:
+	current_user = make_user(session, "purge_realtime_user")
+	now = datetime(2026, 3, 26, 3, 0, 0, tzinfo=timezone.utc)
+	expired_at = now - realtime_analytics_service.REALTIME_SERIES_RETENTION - timedelta(seconds=1)
+	fresh_at = now - timedelta(minutes=5)
+	session.add_all(
+		[
+			RealtimePortfolioSnapshot(
+				user_id=current_user.username,
+				total_value_cny=Decimal("1"),
+				created_at=expired_at,
+			),
+			RealtimePortfolioSnapshot(
+				user_id=current_user.username,
+				total_value_cny=Decimal("2"),
+				created_at=fresh_at,
+			),
+			RealtimeHoldingPerformanceSnapshot(
+				user_id=current_user.username,
+				scope="TOTAL",
+				symbol=None,
+				name="非现金资产",
+				return_pct=Decimal("1"),
+				created_at=expired_at,
+			),
+			RealtimeHoldingPerformanceSnapshot(
+				user_id=current_user.username,
+				scope="TOTAL",
+				symbol=None,
+				name="非现金资产",
+				return_pct=Decimal("2"),
+				created_at=fresh_at,
+			),
+		],
+	)
+	session.commit()
+
+	deleted_counts = realtime_analytics_service._purge_expired_realtime_snapshots(
+		session,
+		now=now,
+	)
+	session.commit()
+
+	assert deleted_counts == (1, 1)
+	assert [
+		row.total_value_cny
+		for row in session.exec(select(RealtimePortfolioSnapshot))
+	] == [Decimal("2.00000000")]
+	assert [
+		row.return_pct
+		for row in session.exec(select(RealtimeHoldingPerformanceSnapshot))
+	] == [Decimal("2.00000000")]
 
 
 def test_create_holding_rejects_future_started_on_based_on_server_date(

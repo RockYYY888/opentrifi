@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from time import monotonic
 from typing import TypeVar
 
+from sqlalchemy import delete
 from sqlmodel import Session, select
 
 from app import runtime_state
@@ -23,6 +24,7 @@ from app.models import (
 	RealtimeHoldingPerformanceSnapshot,
 	RealtimePortfolioSnapshot,
 	SecurityHolding,
+	UserAccount,
 	utc_now,
 )
 from app.runtime_state import LiveHoldingReturnPoint
@@ -61,6 +63,25 @@ class UserRealtimeAnalyticsState:
 	holding_points: tuple[LiveHoldingReturnPoint, ...]
 
 
+@dataclass(slots=True)
+class RealtimeMarketDataPrefetch:
+	quotes_by_pair: dict[tuple[str, str], Quote]
+	fx_rates: dict[str, Decimal]
+	unique_symbol_count: int
+	quote_failure_count: int
+	fx_failure_count: int
+
+
+@dataclass(slots=True)
+class RealtimeSampleStats:
+	user_count: int = 0
+	unique_symbol_count: int = 0
+	quote_failure_count: int = 0
+	fx_failure_count: int = 0
+	deleted_portfolio_snapshot_count: int = 0
+	deleted_return_snapshot_count: int = 0
+
+
 def _group_by_user_id(
 	items: Iterable[GroupedItem],
 	get_user_id: Callable[[GroupedItem], str],
@@ -81,6 +102,7 @@ def _load_assets_for_all_users(
 	dict[str, list[LiabilityEntry]],
 	dict[str, list[OtherAsset]],
 ]:
+	all_user_ids = set(session.exec(select(UserAccount.username)))
 	accounts = list(
 		session.exec(
 			select(CashAccount)
@@ -117,6 +139,7 @@ def _load_assets_for_all_users(
 	liabilities_by_user = _group_by_user_id(liabilities, lambda item: item.user_id)
 	other_assets_by_user = _group_by_user_id(other_assets, lambda item: item.user_id)
 	user_ids = sorted({
+		*all_user_ids,
 		*accounts_by_user.keys(),
 		*holdings_by_user.keys(),
 		*fixed_assets_by_user.keys(),
@@ -135,13 +158,13 @@ def _load_assets_for_all_users(
 
 async def _prefetch_quotes(
 	holdings: list[SecurityHolding],
-) -> dict[tuple[str, str], Quote]:
+) -> tuple[dict[tuple[str, str], Quote], int, int]:
 	unique_pairs = {
 		(holding.symbol, holding.market)
 		for holding in holdings
 	}
 	if not unique_pairs:
-		return {}
+		return {}, 0, 0
 	semaphore = asyncio.Semaphore(REALTIME_MARKET_DATA_CONCURRENCY)
 
 	async def load_quote(symbol: str, market: str) -> tuple[tuple[str, str], Quote | None]:
@@ -161,16 +184,17 @@ async def _prefetch_quotes(
 	quote_results = await asyncio.gather(
 		*(load_quote(symbol, market) for symbol, market in sorted(unique_pairs)),
 	)
-	return {
+	quotes_by_pair = {
 		pair: quote
 		for pair, quote in quote_results
 		if quote is not None
 	}
+	return quotes_by_pair, len(unique_pairs), len(unique_pairs) - len(quotes_by_pair)
 
 
 async def _prefetch_fx_rates(
 	currencies: Iterable[str],
-) -> dict[str, Decimal]:
+) -> tuple[dict[str, Decimal], int]:
 	normalized_codes = {
 		_normalize_currency(currency)
 		for currency in currencies
@@ -179,7 +203,7 @@ async def _prefetch_fx_rates(
 	rates: dict[str, Decimal] = {"CNY": Decimal("1")}
 	requested_codes = sorted(code for code in normalized_codes if code != "CNY")
 	if not requested_codes:
-		return rates
+		return rates, 0
 	semaphore = asyncio.Semaphore(REALTIME_MARKET_DATA_CONCURRENCY)
 
 	async def load_rate(currency_code: str) -> tuple[str, Decimal | None]:
@@ -204,7 +228,35 @@ async def _prefetch_fx_rates(
 		if rate is not None and rate > 0:
 			rates[currency_code] = rate
 
-	return rates
+	return rates, len(requested_codes) - (len(rates) - 1)
+
+
+async def _prefetch_market_data_for_sample(
+	*,
+	accounts_by_user: dict[str, list[CashAccount]],
+	holdings_by_user: dict[str, list[SecurityHolding]],
+	liabilities_by_user: dict[str, list[LiabilityEntry]],
+) -> RealtimeMarketDataPrefetch:
+	all_holdings = [
+		holding
+		for holdings in holdings_by_user.values()
+		for holding in holdings
+	]
+	quotes_by_pair, unique_symbol_count, quote_failure_count = await _prefetch_quotes(all_holdings)
+	fx_rates, fx_failure_count = await _prefetch_fx_rates(
+		[
+			*(account.currency for accounts in accounts_by_user.values() for account in accounts),
+			*(entry.currency for entries in liabilities_by_user.values() for entry in entries),
+			*(quote.currency for quote in quotes_by_pair.values()),
+		],
+	)
+	return RealtimeMarketDataPrefetch(
+		quotes_by_pair=quotes_by_pair,
+		fx_rates=fx_rates,
+		unique_symbol_count=unique_symbol_count,
+		quote_failure_count=quote_failure_count,
+		fx_failure_count=fx_failure_count,
+	)
 
 
 def _build_user_realtime_state(
@@ -495,25 +547,25 @@ def _purge_expired_realtime_snapshots(
 	session: Session,
 	*,
 	now: datetime,
-) -> None:
+) -> tuple[int, int]:
 	cutoff = _coerce_utc_datetime(now) - REALTIME_SERIES_RETENTION
-	for snapshot in session.exec(
-		select(RealtimePortfolioSnapshot).where(RealtimePortfolioSnapshot.created_at < cutoff),
-	):
-		session.delete(snapshot)
-	for snapshot in session.exec(
-		select(RealtimeHoldingPerformanceSnapshot).where(
+	portfolio_result = session.exec(
+		delete(RealtimePortfolioSnapshot).where(RealtimePortfolioSnapshot.created_at < cutoff),
+	)
+	return_result = session.exec(
+		delete(RealtimeHoldingPerformanceSnapshot).where(
 			RealtimeHoldingPerformanceSnapshot.created_at < cutoff,
 		),
-	):
-		session.delete(snapshot)
+	)
+	return int(portfolio_result.rowcount or 0), int(return_result.rowcount or 0)
 
 
 async def _sample_realtime_analytics_once_with_session(
 	session: Session,
 	*,
 	sampled_at: datetime,
-) -> list[str]:
+) -> RealtimeSampleStats:
+	started_at = monotonic()
 	second_bucket = _current_second_bucket(sampled_at)
 	hour_bucket = _current_hour_bucket(sampled_at)
 	(
@@ -524,20 +576,36 @@ async def _sample_realtime_analytics_once_with_session(
 		liabilities_by_user,
 		other_assets_by_user,
 	) = _load_assets_for_all_users(session)
+	stats = RealtimeSampleStats(user_count=len(user_ids))
 	if not user_ids:
 		if second_bucket.second == 0:
-			_purge_expired_realtime_snapshots(session, now=sampled_at)
+			(
+				stats.deleted_portfolio_snapshot_count,
+				stats.deleted_return_snapshot_count,
+			) = _purge_expired_realtime_snapshots(session, now=sampled_at)
 			session.commit()
-		return []
-	all_holdings = [holding for holdings in holdings_by_user.values() for holding in holdings]
-	quotes_by_pair = await _prefetch_quotes(all_holdings)
-	fx_rates = await _prefetch_fx_rates(
-		[
-			*(account.currency for accounts in accounts_by_user.values() for account in accounts),
-			*(entry.currency for entries in liabilities_by_user.values() for entry in entries),
-			*(quote.currency for quote in quotes_by_pair.values()),
-		],
+		service_context.logger.info(
+			"Realtime analytics sample completed in %.3fs "
+			"(users=%s unique_symbols=%s quote_failures=%s fx_failures=%s "
+			"deleted_portfolio=%s deleted_returns=%s).",
+			monotonic() - started_at,
+			stats.user_count,
+			stats.unique_symbol_count,
+			stats.quote_failure_count,
+			stats.fx_failure_count,
+			stats.deleted_portfolio_snapshot_count,
+			stats.deleted_return_snapshot_count,
+		)
+		return stats
+
+	market_data = await _prefetch_market_data_for_sample(
+		accounts_by_user=accounts_by_user,
+		holdings_by_user=holdings_by_user,
+		liabilities_by_user=liabilities_by_user,
 	)
+	stats.unique_symbol_count = market_data.unique_symbol_count
+	stats.quote_failure_count = market_data.quote_failure_count
+	stats.fx_failure_count = market_data.fx_failure_count
 
 	user_states = [
 		_build_user_realtime_state(
@@ -547,8 +615,8 @@ async def _sample_realtime_analytics_once_with_session(
 			fixed_assets=fixed_assets_by_user.get(user_id, []),
 			liabilities=liabilities_by_user.get(user_id, []),
 			other_assets=other_assets_by_user.get(user_id, []),
-			quotes_by_pair=quotes_by_pair,
-			fx_rates=fx_rates,
+			quotes_by_pair=market_data.quotes_by_pair,
+			fx_rates=market_data.fx_rates,
 		)
 		for user_id in user_ids
 	]
@@ -564,10 +632,25 @@ async def _sample_realtime_analytics_once_with_session(
 		second_bucket=second_bucket,
 	)
 	if second_bucket.second == 0:
-		_purge_expired_realtime_snapshots(session, now=sampled_at)
+		(
+			stats.deleted_portfolio_snapshot_count,
+			stats.deleted_return_snapshot_count,
+		) = _purge_expired_realtime_snapshots(session, now=sampled_at)
 
 	session.commit()
-	return user_ids
+	service_context.logger.info(
+		"Realtime analytics sample completed in %.3fs "
+		"(users=%s unique_symbols=%s quote_failures=%s fx_failures=%s "
+		"deleted_portfolio=%s deleted_returns=%s).",
+		monotonic() - started_at,
+		stats.user_count,
+		stats.unique_symbol_count,
+		stats.quote_failure_count,
+		stats.fx_failure_count,
+		stats.deleted_portfolio_snapshot_count,
+		stats.deleted_return_snapshot_count,
+	)
+	return stats
 
 
 async def sample_realtime_analytics_once(
