@@ -19,20 +19,20 @@ from app.schemas import DashboardResponse
 CURRENT_SCHEMA_REVISION = "20260507_01"
 HOT_QUERY_INDEXES = {
 	"securityholdingtransaction": {
-		"ix_securityholdingtransaction_user_symbol_market_traded_created_id",
-		"ix_securityholdingtransaction_user_traded_created_id",
+		"ix_sht_user_symbol_market_traded_created_id",
+		"ix_sht_user_traded_created_id",
 	},
 	"portfoliosnapshot": {"ix_portfoliosnapshot_user_created"},
 	"holdingperformancesnapshot": {
-		"ix_holdingperformancesnapshot_user_scope_symbol_created",
+		"ix_hps_user_scope_symbol_created",
 	},
-	"realtimeportfoliosnapshot": {"ix_realtimeportfoliosnapshot_user_created"},
+	"realtimeportfoliosnapshot": {"ix_rps_user_created"},
 	"realtimeholdingperformancesnapshot": {
-		"ix_realtimeholdingperformancesnapshot_user_scope_symbol_created",
+		"ix_rhps_user_scope_symbol_created",
 	},
 	"assetmutationaudit": {
-		"ix_assetmutationaudit_user_created",
-		"ix_assetmutationaudit_user_agent_task_created",
+		"ix_ama_user_created",
+		"ix_ama_user_agent_task_created",
 	},
 	"userfeedback": {
 		"ix_userfeedback_source_status_priority_created_id",

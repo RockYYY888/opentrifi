@@ -20,12 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 INDEX_SPECS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
 	(
-		"ix_securityholdingtransaction_user_symbol_market_traded_created_id",
+		"ix_sht_user_symbol_market_traded_created_id",
 		"securityholdingtransaction",
 		("user_id", "symbol", "market", "traded_on", "created_at", "id"),
 	),
 	(
-		"ix_securityholdingtransaction_user_traded_created_id",
+		"ix_sht_user_traded_created_id",
 		"securityholdingtransaction",
 		("user_id", "traded_on", "created_at", "id"),
 	),
@@ -35,27 +35,27 @@ INDEX_SPECS: tuple[tuple[str, str, tuple[str, ...]], ...] = (
 		("user_id", "created_at"),
 	),
 	(
-		"ix_holdingperformancesnapshot_user_scope_symbol_created",
+		"ix_hps_user_scope_symbol_created",
 		"holdingperformancesnapshot",
 		("user_id", "scope", "symbol", "created_at"),
 	),
 	(
-		"ix_realtimeportfoliosnapshot_user_created",
+		"ix_rps_user_created",
 		"realtimeportfoliosnapshot",
 		("user_id", "created_at"),
 	),
 	(
-		"ix_realtimeholdingperformancesnapshot_user_scope_symbol_created",
+		"ix_rhps_user_scope_symbol_created",
 		"realtimeholdingperformancesnapshot",
 		("user_id", "scope", "symbol", "created_at"),
 	),
 	(
-		"ix_assetmutationaudit_user_created",
+		"ix_ama_user_created",
 		"assetmutationaudit",
 		("user_id", "created_at"),
 	),
 	(
-		"ix_assetmutationaudit_user_agent_task_created",
+		"ix_ama_user_agent_task_created",
 		"assetmutationaudit",
 		("user_id", "agent_task_id", "created_at"),
 	),
