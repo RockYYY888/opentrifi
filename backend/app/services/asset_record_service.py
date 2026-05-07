@@ -130,7 +130,7 @@ def _resolve_cash_account_record(audit: AssetMutationAudit) -> AssetRecordRead |
 		title=name,
 		summary=summary,
 		effective_date=None,
-		amount=decimal_to_float(display_money(balance)) if _is_numeric_value(balance) else None,
+		amount=display_money(balance) if _is_numeric_value(balance) else None,
 		currency=str(currency).upper() if currency else None,
 		created_at=audit.created_at,
 	)
@@ -183,7 +183,7 @@ def _resolve_cash_transfer_record(audit: AssetMutationAudit) -> AssetRecordRead 
 		summary=_resolve_cash_transfer_summary(state),
 		effective_date=state.get("transferred_on"),
 		amount=(
-			decimal_to_float(display_money(state["source_amount"]))
+			display_money(state["source_amount"])
 			if _is_numeric_value(state.get("source_amount"))
 			else None
 		),
@@ -217,7 +217,7 @@ def _resolve_cash_adjustment_record(audit: AssetMutationAudit) -> AssetRecordRea
 		summary=state.get("note") or "手工账本调整",
 		effective_date=state.get("happened_on"),
 		amount=(
-			decimal_to_float(display_money(state["amount"]))
+			display_money(state["amount"])
 			if _is_numeric_value(state.get("amount"))
 			else None
 		),
@@ -356,11 +356,11 @@ def _resolve_holding_transaction_record(
 		summary=summary,
 		symbol=symbol,
 		effective_date=state.get("traded_on"),
-		amount=decimal_to_float(display_price(price)) if _is_numeric_value(price) else None,
+		amount=display_price(price) if _is_numeric_value(price) else None,
 		currency=currency,
-		profit_amount=decimal_to_float(profit_tuple[0]) if profit_tuple is not None else None,
+		profit_amount=profit_tuple[0] if profit_tuple is not None else None,
 		profit_currency=profit_tuple[1] if profit_tuple is not None else None,
-		profit_rate_pct=decimal_to_float(profit_tuple[2]) if profit_tuple is not None else None,
+		profit_rate_pct=profit_tuple[2] if profit_tuple is not None else None,
 		created_at=audit.created_at,
 	)
 
@@ -424,7 +424,7 @@ def _resolve_asset_entry_record(
 			"DELETE": f"删除{title_fallback}",
 		}.get(operation_kind, title_fallback),
 		effective_date=state.get("started_on"),
-		amount=decimal_to_float(display_money(amount)) if _is_numeric_value(amount) else None,
+		amount=display_money(amount) if _is_numeric_value(amount) else None,
 		currency=currency,
 		created_at=audit.created_at,
 	)

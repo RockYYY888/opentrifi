@@ -1,3 +1,5 @@
+import type { DecimalString } from "../types/decimal";
+
 const DEFAULT_API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 const RUNTIME_API_KEY_STORAGE_KEY = "asset-tracker-runtime-api-key";
 let inMemoryRuntimeApiKey: string | null = null;
@@ -9,6 +11,66 @@ export interface ApiClient {
 export interface ApiClientOptions {
 	baseUrl?: string;
 	fetcher?: typeof fetch;
+}
+
+const DECIMAL_API_FIELD_NAMES = new Set([
+	"amount",
+	"balance",
+	"cash_value_cny",
+	"cost_basis_price",
+	"current_value_cny",
+	"fixed_assets_value_cny",
+	"fx_to_cny",
+	"hkd_cny_rate",
+	"holdings_value_cny",
+	"liabilities_value_cny",
+	"original_value_cny",
+	"other_assets_value_cny",
+	"price",
+	"profit_amount",
+	"profit_rate_pct",
+	"purchase_value_cny",
+	"quantity",
+	"return_pct",
+	"source_amount",
+	"target_amount",
+	"total_value_cny",
+	"usd_cny_rate",
+	"value",
+	"value_cny",
+]);
+const DECIMAL_STRING_PATTERN = /^-?\d+(?:\.\d+)?$/;
+
+export function parseDecimalString(value: number | DecimalString): number {
+	if (typeof value === "number") {
+		return value;
+	}
+	const parsedValue = Number(value);
+	if (!Number.isFinite(parsedValue)) {
+		throw new Error(`Invalid decimal string: ${value}`);
+	}
+	return parsedValue;
+}
+
+function normalizeApiDecimalStrings(value: unknown, fieldName?: string): unknown {
+	if (typeof value === "string") {
+		if (fieldName && DECIMAL_API_FIELD_NAMES.has(fieldName) && DECIMAL_STRING_PATTERN.test(value)) {
+			return parseDecimalString(value);
+		}
+		return value;
+	}
+	if (Array.isArray(value)) {
+		return value.map((item) => normalizeApiDecimalStrings(item));
+	}
+	if (value && typeof value === "object") {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, item]) => [
+				key,
+				normalizeApiDecimalStrings(item, key),
+			]),
+		);
+	}
+	return value;
 }
 
 function normalizeApiKeyValue(value: string | null | undefined): string | null {
@@ -79,7 +141,7 @@ function parsePayload<T>(responseText: string): T {
 	}
 
 	try {
-		return JSON.parse(responseText) as T;
+		return normalizeApiDecimalStrings(JSON.parse(responseText)) as T;
 	} catch {
 		return responseText as T;
 	}

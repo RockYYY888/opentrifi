@@ -5,7 +5,6 @@ from fastapi.responses import Response
 from sqlmodel import select
 
 from app.fixed_precision import (
-	decimal_to_float,
 	display_money,
 	quantize_decimal,
 	quantize_optional_decimal,
@@ -60,15 +59,15 @@ async def list_fixed_assets(
 				id=asset.id or 0,
 				name=asset.name,
 				category=asset.category,
-				current_value_cny=decimal_to_float(display_money(asset.current_value_cny)),
-				purchase_value_cny=decimal_to_float(display_money(asset.purchase_value_cny))
+				current_value_cny=display_money(asset.current_value_cny),
+				purchase_value_cny=display_money(asset.purchase_value_cny)
 				if asset.purchase_value_cny is not None
 				else None,
 				started_on=asset.started_on,
 				note=asset.note,
 				value_cny=valued_asset.value_cny
 				if valued_asset
-				else decimal_to_float(display_money(asset.current_value_cny)),
+				else display_money(asset.current_value_cny),
 				return_pct=valued_asset.return_pct if valued_asset else None,
 			),
 		)
@@ -109,14 +108,14 @@ def create_fixed_asset(
 		id=asset.id or 0,
 		name=asset.name,
 		category=asset.category,
-		current_value_cny=decimal_to_float(value_cny),
-		purchase_value_cny=decimal_to_float(display_money(asset.purchase_value_cny))
+		current_value_cny=value_cny,
+		purchase_value_cny=display_money(asset.purchase_value_cny)
 		if asset.purchase_value_cny is not None
 		else None,
 		started_on=asset.started_on,
 		note=asset.note,
-		value_cny=decimal_to_float(value_cny),
-		return_pct=decimal_to_float(_calculate_return_pct(value_cny, asset.purchase_value_cny)),
+		value_cny=value_cny,
+		return_pct=_calculate_return_pct(value_cny, asset.purchase_value_cny),
 	)
 
 def update_fixed_asset(
@@ -158,14 +157,14 @@ def update_fixed_asset(
 		id=asset.id or 0,
 		name=asset.name,
 		category=asset.category,
-		current_value_cny=decimal_to_float(value_cny),
-		purchase_value_cny=decimal_to_float(display_money(asset.purchase_value_cny))
+		current_value_cny=value_cny,
+		purchase_value_cny=display_money(asset.purchase_value_cny)
 		if asset.purchase_value_cny is not None
 		else None,
 		started_on=asset.started_on,
 		note=asset.note,
-		value_cny=decimal_to_float(value_cny),
-		return_pct=decimal_to_float(_calculate_return_pct(value_cny, asset.purchase_value_cny)),
+		value_cny=value_cny,
+		return_pct=_calculate_return_pct(value_cny, asset.purchase_value_cny),
 	)
 
 def delete_fixed_asset(
@@ -218,7 +217,7 @@ async def list_liabilities(
 				name=entry.name,
 				category=entry.category,
 				currency=entry.currency,
-				balance=decimal_to_float(display_money(entry.balance)),
+				balance=display_money(entry.balance),
 				started_on=entry.started_on,
 				note=entry.note,
 				fx_to_cny=valued_entry.fx_to_cny if valued_entry else None,
@@ -345,15 +344,15 @@ async def list_other_assets(
 				id=asset.id or 0,
 				name=asset.name,
 				category=asset.category,
-				current_value_cny=decimal_to_float(display_money(asset.current_value_cny)),
-				original_value_cny=decimal_to_float(display_money(asset.original_value_cny))
+				current_value_cny=display_money(asset.current_value_cny),
+				original_value_cny=display_money(asset.original_value_cny)
 				if asset.original_value_cny is not None
 				else None,
 				started_on=asset.started_on,
 				note=asset.note,
 				value_cny=valued_asset.value_cny
 				if valued_asset
-				else decimal_to_float(display_money(asset.current_value_cny)),
+				else display_money(asset.current_value_cny),
 				return_pct=valued_asset.return_pct if valued_asset else None,
 			),
 		)
@@ -394,14 +393,14 @@ def create_other_asset(
 		id=asset.id or 0,
 		name=asset.name,
 		category=asset.category,
-		current_value_cny=decimal_to_float(value_cny),
-		original_value_cny=decimal_to_float(display_money(asset.original_value_cny))
+		current_value_cny=value_cny,
+		original_value_cny=display_money(asset.original_value_cny)
 		if asset.original_value_cny is not None
 		else None,
 		started_on=asset.started_on,
 		note=asset.note,
-		value_cny=decimal_to_float(value_cny),
-		return_pct=decimal_to_float(_calculate_return_pct(value_cny, asset.original_value_cny)),
+		value_cny=value_cny,
+		return_pct=_calculate_return_pct(value_cny, asset.original_value_cny),
 	)
 
 def update_other_asset(
@@ -443,14 +442,14 @@ def update_other_asset(
 		id=asset.id or 0,
 		name=asset.name,
 		category=asset.category,
-		current_value_cny=decimal_to_float(value_cny),
-		original_value_cny=decimal_to_float(display_money(asset.original_value_cny))
+		current_value_cny=value_cny,
+		original_value_cny=display_money(asset.original_value_cny)
 		if asset.original_value_cny is not None
 		else None,
 		started_on=asset.started_on,
 		note=asset.note,
-		value_cny=decimal_to_float(value_cny),
-		return_pct=decimal_to_float(_calculate_return_pct(value_cny, asset.original_value_cny)),
+		value_cny=value_cny,
+		return_pct=_calculate_return_pct(value_cny, asset.original_value_cny),
 	)
 
 def delete_other_asset(

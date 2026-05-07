@@ -31,7 +31,6 @@ from app.services import service_context
 from app.services.common_service import _calculate_return_pct, _normalize_currency
 from app.fixed_precision import (
 	DECIMAL_ZERO,
-	decimal_to_float,
 	display_fx_rate,
 	display_money,
 	display_price,
@@ -130,13 +129,13 @@ async def _value_cash_accounts(
 				id=account.id or 0,
 				name=account.name,
 				platform=account.platform,
-				balance=decimal_to_float(display_money(account.balance)),
+				balance=display_money(account.balance),
 				currency=account.currency,
 				account_type=account.account_type,
 				started_on=account.started_on,
 				note=account.note,
-				fx_to_cny=decimal_to_float(display_fx_rate(fx_rate)),
-				value_cny=decimal_to_float(value_cny),
+				fx_to_cny=display_fx_rate(fx_rate),
+				value_cny=value_cny,
 			),
 		)
 		total += value_cny
@@ -214,20 +213,20 @@ async def _value_holding(
 				id=holding.id or 0,
 				symbol=holding.symbol,
 				name=holding.name,
-				quantity=decimal_to_float(display_quantity(holding.quantity)),
+				quantity=display_quantity(holding.quantity),
 				fallback_currency=holding.fallback_currency,
-				cost_basis_price=decimal_to_float(display_price(holding.cost_basis_price))
+				cost_basis_price=display_price(holding.cost_basis_price)
 				if holding.cost_basis_price is not None
 				else None,
 			market=holding.market,
 			broker=holding.broker,
 			started_on=holding.started_on,
 			note=holding.note,
-				price=decimal_to_float(price),
+				price=price,
 				price_currency=price_currency,
-				fx_to_cny=decimal_to_float(display_fx_rate(fx_rate)),
-				value_cny=decimal_to_float(value_cny),
-				return_pct=decimal_to_float(_calculate_return_pct(price, holding.cost_basis_price))
+				fx_to_cny=display_fx_rate(fx_rate),
+				value_cny=value_cny,
+				return_pct=_calculate_return_pct(price, holding.cost_basis_price)
 				if price > 0
 				else None,
 				last_updated=None if force_pending else last_updated,
@@ -280,14 +279,14 @@ def _value_fixed_assets(
 				id=asset.id or 0,
 				name=asset.name,
 				category=asset.category,
-				current_value_cny=decimal_to_float(value_cny),
-				purchase_value_cny=decimal_to_float(display_money(asset.purchase_value_cny))
+				current_value_cny=value_cny,
+				purchase_value_cny=display_money(asset.purchase_value_cny)
 				if asset.purchase_value_cny is not None
 				else None,
 				started_on=asset.started_on,
 				note=asset.note,
-				value_cny=decimal_to_float(value_cny),
-				return_pct=decimal_to_float(_calculate_return_pct(value_cny, asset.purchase_value_cny)),
+				value_cny=value_cny,
+				return_pct=_calculate_return_pct(value_cny, asset.purchase_value_cny),
 			),
 		)
 		total += value_cny
@@ -338,11 +337,11 @@ async def _value_liabilities(
 				name=entry.name,
 				category=entry.category,
 				currency=entry.currency,
-				balance=decimal_to_float(display_money(entry.balance)),
+				balance=display_money(entry.balance),
 				started_on=entry.started_on,
 				note=entry.note,
-				fx_to_cny=decimal_to_float(display_fx_rate(fx_rate)),
-				value_cny=decimal_to_float(value_cny),
+				fx_to_cny=display_fx_rate(fx_rate),
+				value_cny=value_cny,
 			),
 		)
 		total += value_cny
@@ -362,14 +361,14 @@ def _value_other_assets(
 				id=asset.id or 0,
 				name=asset.name,
 				category=asset.category,
-				current_value_cny=decimal_to_float(value_cny),
-				original_value_cny=decimal_to_float(display_money(asset.original_value_cny))
+				current_value_cny=value_cny,
+				original_value_cny=display_money(asset.original_value_cny)
 				if asset.original_value_cny is not None
 				else None,
 				started_on=asset.started_on,
 				note=asset.note,
-				value_cny=decimal_to_float(value_cny),
-				return_pct=decimal_to_float(_calculate_return_pct(value_cny, asset.original_value_cny)),
+				value_cny=value_cny,
+				return_pct=_calculate_return_pct(value_cny, asset.original_value_cny),
 			),
 		)
 		total += value_cny
@@ -384,7 +383,7 @@ def _to_cash_account_read(account: CashAccount) -> CashAccountRead:
 		name=account.name,
 		platform=account.platform,
 		currency=account.currency,
-		balance=decimal_to_float(display_money(account.balance)),
+		balance=display_money(account.balance),
 		account_type=account.account_type,
 		started_on=account.started_on,
 		note=account.note,
@@ -397,7 +396,7 @@ def _to_cash_ledger_entry_read(entry: CashLedgerEntry) -> CashLedgerEntryRead:
 		id=entry.id or 0,
 		cash_account_id=entry.cash_account_id,
 		entry_type=entry.entry_type,
-		amount=decimal_to_float(quantize_decimal(entry.amount)),
+		amount=quantize_decimal(entry.amount),
 		currency=entry.currency,
 		happened_on=entry.happened_on,
 		note=entry.note,
@@ -412,8 +411,8 @@ def _to_cash_transfer_read(transfer: CashTransfer) -> CashTransferRead:
 		id=transfer.id or 0,
 		from_account_id=transfer.from_account_id,
 		to_account_id=transfer.to_account_id,
-		source_amount=decimal_to_float(quantize_decimal(transfer.source_amount)),
-		target_amount=decimal_to_float(quantize_decimal(transfer.target_amount)),
+		source_amount=quantize_decimal(transfer.source_amount),
+		target_amount=quantize_decimal(transfer.target_amount),
 		source_currency=transfer.source_currency,
 		target_currency=transfer.target_currency,
 		transferred_on=transfer.transferred_on,
@@ -429,9 +428,9 @@ def _to_holding_read(holding: SecurityHolding) -> SecurityHoldingRead:
 		id=holding.id or 0,
 		symbol=holding.symbol,
 		name=holding.name,
-		quantity=decimal_to_float(display_quantity(holding.quantity)),
+		quantity=display_quantity(holding.quantity),
 		fallback_currency=holding.fallback_currency,
-		cost_basis_price=decimal_to_float(display_price(holding.cost_basis_price))
+		cost_basis_price=display_price(holding.cost_basis_price)
 		if holding.cost_basis_price is not None
 		else None,
 		market=holding.market,
@@ -466,8 +465,8 @@ def _to_holding_transaction_read(
 		symbol=transaction.symbol,
 		name=transaction.name,
 		side=transaction.side,
-		quantity=decimal_to_float(display_quantity(transaction.quantity)),
-		price=decimal_to_float(display_price(transaction.price)) if transaction.price is not None else None,
+		quantity=display_quantity(transaction.quantity),
+		price=display_price(transaction.price) if transaction.price is not None else None,
 		fallback_currency=transaction.fallback_currency,
 		market=transaction.market,
 		broker=transaction.broker,
@@ -489,7 +488,7 @@ def _to_liability_read(entry: LiabilityEntry) -> LiabilityEntryRead:
 		name=entry.name,
 		category=entry.category,
 		currency=entry.currency,
-		balance=decimal_to_float(display_money(entry.balance)),
+		balance=display_money(entry.balance),
 		started_on=entry.started_on,
 		note=entry.note,
 		fx_to_cny=valued_entry.fx_to_cny if valued_entry else None,

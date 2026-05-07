@@ -195,12 +195,12 @@ class CashAccountRead(BaseModel):
 	name: str
 	platform: str
 	currency: str
-	balance: float
+	balance: Decimal
 	account_type: str
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	fx_to_cny: Optional[float] = None
-	value_cny: Optional[float] = None
+	fx_to_cny: Optional[Decimal] = None
+	value_cny: Optional[Decimal] = None
 
 
 class FixedAssetBase(BaseModel):
@@ -248,12 +248,12 @@ class FixedAssetRead(BaseModel):
 	id: int
 	name: str
 	category: str
-	current_value_cny: float
-	purchase_value_cny: Optional[float] = None
+	current_value_cny: Decimal
+	purchase_value_cny: Optional[Decimal] = None
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	value_cny: float
-	return_pct: Optional[float] = None
+	value_cny: Decimal
+	return_pct: Optional[Decimal] = None
 
 
 class LiabilityEntryCreate(BaseModel):
@@ -319,11 +319,11 @@ class LiabilityEntryRead(BaseModel):
 	name: str
 	category: str
 	currency: str
-	balance: float
+	balance: Decimal
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	fx_to_cny: Optional[float] = None
-	value_cny: Optional[float] = None
+	fx_to_cny: Optional[Decimal] = None
+	value_cny: Optional[Decimal] = None
 
 
 class OtherAssetBase(BaseModel):
@@ -371,12 +371,12 @@ class OtherAssetRead(BaseModel):
 	id: int
 	name: str
 	category: str
-	current_value_cny: float
-	original_value_cny: Optional[float] = None
+	current_value_cny: Decimal
+	original_value_cny: Optional[Decimal] = None
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	value_cny: float
-	return_pct: Optional[float] = None
+	value_cny: Decimal
+	return_pct: Optional[Decimal] = None
 
 
 class AuthRegisterCredentials(BaseModel):
@@ -797,17 +797,17 @@ class SecurityHoldingRead(UtcTimestampResponseModel):
 	id: int
 	symbol: str
 	name: str
-	quantity: float
+	quantity: Decimal
 	fallback_currency: str
-	cost_basis_price: Optional[float] = None
+	cost_basis_price: Optional[Decimal] = None
 	market: str
 	broker: Optional[str] = None
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	price: Optional[float] = None
+	price: Optional[Decimal] = None
 	price_currency: Optional[str] = None
-	value_cny: Optional[float] = None
-	return_pct: Optional[float] = None
+	value_cny: Optional[Decimal] = None
+	return_pct: Optional[Decimal] = None
 	last_updated: Optional[datetime] = None
 
 
@@ -971,8 +971,8 @@ class SecurityHoldingTransactionRead(UtcTimestampResponseModel):
 	symbol: str
 	name: str
 	side: str
-	quantity: float
-	price: Optional[float] = None
+	quantity: Decimal
+	price: Optional[Decimal] = None
 	fallback_currency: str
 	market: str
 	broker: Optional[str] = None
@@ -997,7 +997,7 @@ class CashLedgerEntryRead(UtcTimestampResponseModel):
 	id: int
 	cash_account_id: int
 	entry_type: str
-	amount: float
+	amount: Decimal
 	currency: str
 	happened_on: date
 	note: str | None = None
@@ -1076,8 +1076,8 @@ class CashTransferRead(UtcTimestampResponseModel):
 	id: int
 	from_account_id: int
 	to_account_id: int
-	source_amount: float
-	target_amount: float
+	source_amount: Decimal
+	target_amount: Decimal
 	source_currency: str
 	target_currency: str
 	transferred_on: date
@@ -1191,7 +1191,7 @@ class SecurityQuoteRead(UtcTimestampResponseModel):
 	symbol: str
 	name: str
 	market: str
-	price: float
+	price: Decimal
 	currency: str
 	market_time: datetime | None = None
 	warnings: list[str]
@@ -1201,31 +1201,31 @@ class ValuedCashAccount(BaseModel):
 	id: int
 	name: str
 	platform: str
-	balance: float
+	balance: Decimal
 	currency: str
 	account_type: str
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	fx_to_cny: float
-	value_cny: float
+	fx_to_cny: Decimal
+	value_cny: Decimal
 
 
 class ValuedHolding(UtcTimestampResponseModel):
 	id: int
 	symbol: str
 	name: str
-	quantity: float
+	quantity: Decimal
 	fallback_currency: str
-	cost_basis_price: Optional[float] = None
+	cost_basis_price: Optional[Decimal] = None
 	market: str
 	broker: Optional[str] = None
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	price: float
+	price: Decimal
 	price_currency: str
-	fx_to_cny: float
-	value_cny: float
-	return_pct: Optional[float] = None
+	fx_to_cny: Decimal
+	value_cny: Decimal
+	return_pct: Optional[Decimal] = None
 	last_updated: Optional[datetime] = None
 
 
@@ -1233,12 +1233,12 @@ class ValuedFixedAsset(BaseModel):
 	id: int
 	name: str
 	category: str
-	current_value_cny: float
-	purchase_value_cny: Optional[float] = None
+	current_value_cny: Decimal
+	purchase_value_cny: Optional[Decimal] = None
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	value_cny: float
-	return_pct: Optional[float] = None
+	value_cny: Decimal
+	return_pct: Optional[Decimal] = None
 
 
 class ValuedLiabilityEntry(BaseModel):
@@ -1246,33 +1246,33 @@ class ValuedLiabilityEntry(BaseModel):
 	name: str
 	category: str
 	currency: str
-	balance: float
+	balance: Decimal
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	fx_to_cny: float
-	value_cny: float
+	fx_to_cny: Decimal
+	value_cny: Decimal
 
 
 class ValuedOtherAsset(BaseModel):
 	id: int
 	name: str
 	category: str
-	current_value_cny: float
-	original_value_cny: Optional[float] = None
+	current_value_cny: Decimal
+	original_value_cny: Optional[Decimal] = None
 	started_on: Optional[date] = None
 	note: Optional[str] = None
-	value_cny: float
-	return_pct: Optional[float] = None
+	value_cny: Decimal
+	return_pct: Optional[Decimal] = None
 
 
 class AllocationSlice(BaseModel):
 	label: str
-	value: float
+	value: Decimal
 
 
 class TimelinePoint(BaseModel):
 	label: str
-	value: float
+	value: Decimal
 	timestamp_utc: datetime
 	corrected: bool = False
 
@@ -1338,7 +1338,7 @@ class DashboardCorrectionRead(UtcTimestampResponseModel):
 	granularity: str
 	bucket_utc: datetime
 	action: str
-	corrected_value: float | None = None
+	corrected_value: Decimal | None = None
 	reason: str
 	created_at: datetime
 	updated_at: datetime
@@ -1373,18 +1373,18 @@ class AssetRecordRead(UtcTimestampResponseModel):
 	summary: str | None = None
 	symbol: str | None = None
 	effective_date: date | None = None
-	amount: float | None = None
+	amount: Decimal | None = None
 	currency: str | None = None
-	profit_amount: float | None = None
+	profit_amount: Decimal | None = None
 	profit_currency: str | None = None
-	profit_rate_pct: float | None = None
+	profit_rate_pct: Decimal | None = None
 	created_at: datetime
 
 
 class HoldingReturnSeries(BaseModel):
 	symbol: str
 	name: str
-	quantity: float
+	quantity: Decimal
 	second_series: list[TimelinePoint] = Field(default_factory=list)
 	minute_series: list[TimelinePoint] = Field(default_factory=list)
 	hour_series: list[TimelinePoint]
@@ -1395,14 +1395,14 @@ class HoldingReturnSeries(BaseModel):
 
 class DashboardResponse(BaseModel):
 	server_today: date
-	total_value_cny: float
-	cash_value_cny: float
-	holdings_value_cny: float
-	fixed_assets_value_cny: float
-	liabilities_value_cny: float
-	other_assets_value_cny: float
-	usd_cny_rate: Optional[float] = None
-	hkd_cny_rate: Optional[float] = None
+	total_value_cny: Decimal
+	cash_value_cny: Decimal
+	holdings_value_cny: Decimal
+	fixed_assets_value_cny: Decimal
+	liabilities_value_cny: Decimal
+	other_assets_value_cny: Decimal
+	usd_cny_rate: Optional[Decimal] = None
+	hkd_cny_rate: Optional[Decimal] = None
 	cash_accounts: list[ValuedCashAccount]
 	holdings: list[ValuedHolding]
 	fixed_assets: list[ValuedFixedAsset]
@@ -1430,14 +1430,14 @@ class AgentContextRead(UtcTimestampResponseModel):
 	user_id: str
 	generated_at: datetime
 	server_today: date
-	total_value_cny: float
-	cash_value_cny: float
-	holdings_value_cny: float
-	fixed_assets_value_cny: float
-	liabilities_value_cny: float
-	other_assets_value_cny: float
-	usd_cny_rate: Optional[float] = None
-	hkd_cny_rate: Optional[float] = None
+	total_value_cny: Decimal
+	cash_value_cny: Decimal
+	holdings_value_cny: Decimal
+	fixed_assets_value_cny: Decimal
+	liabilities_value_cny: Decimal
+	other_assets_value_cny: Decimal
+	usd_cny_rate: Optional[Decimal] = None
+	hkd_cny_rate: Optional[Decimal] = None
 	allocation: list[AllocationSlice]
 	cash_accounts: list[ValuedCashAccount]
 	holdings: list[ValuedHolding]

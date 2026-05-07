@@ -38,7 +38,7 @@ from app.services.market_data import (
     normalize_symbol as normalize_market_symbol,
     normalize_symbol_for_market as normalize_market_symbol_for_market,
 )
-from app.fixed_precision import display_percent, to_decimal
+from app.fixed_precision import decimal_to_string, display_percent, to_decimal
 
 FEEDBACK_TIMEZONE = ZoneInfo("Asia/Shanghai")
 MAX_DAILY_FEEDBACK_SUBMISSIONS = 3
@@ -190,7 +190,7 @@ def _json_ready(value: Any) -> Any:
 	if isinstance(value, date):
 		return value.isoformat()
 	if isinstance(value, Decimal):
-		return float(value)
+		return decimal_to_string(value)
 	if isinstance(value, dict):
 		return {str(key): _json_ready(item) for key, item in value.items()}
 	if isinstance(value, (list, tuple)):

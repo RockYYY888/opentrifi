@@ -113,3 +113,9 @@ def decimal_to_float(value: FixedNumber | None) -> float | None:
 	if value is None:
 		return None
 	return float(to_decimal(value))
+
+
+def decimal_to_string(value: FixedNumber | None) -> str | None:
+	if value is None:
+		return None
+	return format(to_decimal(value), "f")

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Callable, Iterable, TypeVar
 from zoneinfo import ZoneInfo
 
-from app.fixed_precision import decimal_to_float, display_money, display_percent
+from app.fixed_precision import display_money, display_percent
 from app.models import HoldingPerformanceSnapshot, PortfolioSnapshot
 from app.schemas import TimelinePoint
 
@@ -74,8 +75,8 @@ def _build_timeline_from_snapshots(
 	snapshots: Iterable[SeriesSnapshot],
 	granularity: str,
 	get_created_at: Callable[[SeriesSnapshot], datetime],
-	get_value: Callable[[SeriesSnapshot], float],
-	format_value: Callable[[float], float],
+	get_value: Callable[[SeriesSnapshot], Decimal],
+	format_value: Callable[[Decimal], Decimal],
 ) -> list[TimelinePoint]:
 	buckets: dict[datetime, SeriesSnapshot] = {}
 	for snapshot in snapshots:
@@ -114,7 +115,7 @@ def build_timeline(
 		granularity,
 		get_created_at=lambda snapshot: snapshot.created_at,
 		get_value=lambda snapshot: snapshot.total_value_cny,
-		format_value=lambda value: decimal_to_float(display_money(value)) or 0.0,
+		format_value=display_money,
 	)
 
 
@@ -127,5 +128,5 @@ def build_return_timeline(
 		granularity,
 		get_created_at=lambda snapshot: snapshot.created_at,
 		get_value=lambda snapshot: snapshot.return_pct,
-		format_value=lambda value: decimal_to_float(display_percent(value)) or 0.0,
+		format_value=display_percent,
 	)

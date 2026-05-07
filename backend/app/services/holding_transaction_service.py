@@ -928,7 +928,7 @@ async def get_security_quote(
 		symbol=quote.symbol,
 		name=quote.name,
 		market=normalized_market,
-		price=quote.price,
+		price=display_price(quote.price),
 		currency=_normalize_currency(quote.currency),
 		market_time=quote.market_time,
 		warnings=warnings,

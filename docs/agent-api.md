@@ -45,6 +45,22 @@ To register or refresh an agent entry for the current account:
 Requests that omit `Agent-Name`, send it as an empty string, or send the literal string `false`
 stay classified as direct API traffic and do not create or refresh an agent registration.
 
+## Decimal Values
+
+Financial values are deterministic fixed-precision decimals. Request bodies accept either JSON
+numbers or decimal strings for amount, price, quantity, foreign-exchange rate, and return-rate
+fields. The backend converts them to `Decimal` immediately. Read responses return financial values
+as decimal strings so clients do not depend on binary floating-point behavior.
+
+| Category | Request Type | Response Type | Examples |
+| --- | --- | --- | --- |
+| Money and prices | `number` or `string` | `string` | `"1000.00"`, `"188.50000000"` |
+| Quantities | `number` or `string` | `string` | `"1200"`, `"0.12500000"` |
+| Foreign-exchange rates | `number` or `string` | `string` | `"7.234500"` |
+| Return percentages | `number` or `string` | `string` | `"-3.25"` |
+
+Agents should prefer decimal strings in requests when exact reproducibility matters.
+
 ### API Key Lifecycle Endpoints
 
 | Method | Path | Auth Context | Purpose |
@@ -327,7 +343,7 @@ for the current user as seen.
 | `granularity` | `string` | Yes | Bucket granularity, such as hourly or daily |
 | `bucket_utc` | `string` | Yes | Target bucket timestamp in UTC |
 | `action` | `string` | Yes | Correction action to apply |
-| `corrected_value` | `number` | No | Replacement numeric value when the action requires one |
+| `corrected_value` | `number` or `string` | No | Replacement decimal value when the action requires one |
 | `reason` | `string` | Yes | Human-readable audit reason |
 
 ### `POST /api/accounts` And `PUT /api/accounts/{account_id}`
@@ -337,7 +353,7 @@ for the current user as seen.
 | `name` | `string` | Yes | Yes | Account display name |
 | `platform` | `string` | Yes | Yes | Broker, bank, or platform name |
 | `currency` | `string` | No | Yes | Account currency; defaults to the backend standard when omitted |
-| `balance` | `number` | Yes | Yes | Current account balance |
+| `balance` | `number` or `string` | Yes | Yes | Current account balance |
 | `account_type` | `string` | No | Yes | Optional account classification |
 | `started_on` | `string` | No | Yes | Account inception date |
 | `note` | `string` | No | Yes | Free-form metadata |
@@ -347,7 +363,7 @@ for the current user as seen.
 | Field | Type | Required On Create | Allowed On Update | Description |
 | --- | --- | --- | --- | --- |
 | `cash_account_id` | `integer` | Yes | No | Target cash account |
-| `amount` | `number` | Yes | Yes | Signed adjustment amount |
+| `amount` | `number` or `string` | Yes | Yes | Signed adjustment amount |
 | `happened_on` | `string` | Yes | Yes | Effective date |
 | `note` | `string` | No | Yes | Audit note |
 
@@ -357,8 +373,8 @@ for the current user as seen.
 | --- | --- | --- | --- | --- |
 | `from_account_id` | `integer` | Yes | Yes | Source cash account |
 | `to_account_id` | `integer` | Yes | Yes | Destination cash account |
-| `source_amount` | `number` | Yes | Yes | Amount deducted from the source account |
-| `target_amount` | `number` | No | Yes | Optional destination amount for FX transfers |
+| `source_amount` | `number` or `string` | Yes | Yes | Amount deducted from the source account |
+| `target_amount` | `number` or `string` | No | Yes | Optional destination amount for FX transfers |
 | `transferred_on` | `string` | Yes | Yes | Effective transfer date |
 | `note` | `string` | No | Yes | Audit note |
 
@@ -366,8 +382,8 @@ for the current user as seen.
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `quantity` | `number` | No | Metadata-compatibility field; prefer transaction edits for quantity changes |
-| `cost_basis_price` | `number` | No | Metadata-compatibility field; prefer transaction edits for cost changes |
+| `quantity` | `number` or `string` | No | Metadata-compatibility field; prefer transaction edits for quantity changes |
+| `cost_basis_price` | `number` or `string` | No | Metadata-compatibility field; prefer transaction edits for cost changes |
 | `started_on` | `string` | No | Metadata-compatibility field; prefer transaction edits for date changes |
 | `broker` | `string` | No | Holding metadata |
 | `note` | `string` | No | Holding metadata |
@@ -382,8 +398,8 @@ corrections, use `PATCH /api/holding-transactions/{transaction_id}`.
 | `side` | `string` | No | No | Trade side; the backend infers semantics from the create path and payload rules |
 | `symbol` | `string` | Yes | No | Security symbol |
 | `name` | `string` | Yes | Yes | Security display name |
-| `quantity` | `number` | Yes | Yes | Trade quantity |
-| `price` | `number` | No | Yes | Per-unit trade price |
+| `quantity` | `number` or `string` | Yes | Yes | Trade quantity |
+| `price` | `number` or `string` | No | Yes | Per-unit trade price |
 | `fallback_currency` | `string` | No | Yes | Currency used when quote metadata is unavailable |
 | `market` | `string` | No | No | Market code |
 | `broker` | `string` | No | Yes | Broker label |
@@ -400,10 +416,10 @@ corrections, use `PATCH /api/holding-transactions/{transaction_id}`.
 | --- | --- | --- | --- | --- |
 | `name` | `string` | Yes | Yes | Asset name |
 | `category` | `string` | No | Yes | Asset category |
-| `current_value_cny` | `number` | Yes | Yes | Current value in CNY |
+| `current_value_cny` | `number` or `string` | Yes | Yes | Current value in CNY |
 | `started_on` | `string` | No | Yes | Effective start date |
 | `note` | `string` | No | Yes | Metadata note |
-| `purchase_value_cny` | `number` | No | Yes | Original purchase value in CNY |
+| `purchase_value_cny` | `number` or `string` | No | Yes | Original purchase value in CNY |
 
 ### `POST /api/liabilities` And `PUT /api/liabilities/{entry_id}`
 
@@ -412,7 +428,7 @@ corrections, use `PATCH /api/holding-transactions/{transaction_id}`.
 | `name` | `string` | Yes | Yes | Liability name |
 | `category` | `string` | No | Yes | Liability category |
 | `currency` | `string` | No | Yes | Liability currency |
-| `balance` | `number` | Yes | Yes | Current liability balance |
+| `balance` | `number` or `string` | Yes | Yes | Current liability balance |
 | `started_on` | `string` | No | Yes | Effective start date |
 | `note` | `string` | No | Yes | Metadata note |
 
@@ -422,10 +438,10 @@ corrections, use `PATCH /api/holding-transactions/{transaction_id}`.
 | --- | --- | --- | --- | --- |
 | `name` | `string` | Yes | Yes | Asset name |
 | `category` | `string` | No | Yes | Asset category |
-| `current_value_cny` | `number` | Yes | Yes | Current value in CNY |
+| `current_value_cny` | `number` or `string` | Yes | Yes | Current value in CNY |
 | `started_on` | `string` | No | Yes | Effective start date |
 | `note` | `string` | No | Yes | Metadata note |
-| `original_value_cny` | `number` | No | Yes | Original booked value in CNY |
+| `original_value_cny` | `number` or `string` | No | Yes | Original booked value in CNY |
 
 ### `POST /api/admin/release-notes` And `POST /api/admin/release-notes/publish-changelog`
 
@@ -527,8 +543,8 @@ curl -X POST http://127.0.0.1:80/api/holding-transactions \
   -d '{
     "symbol": "AAPL",
     "name": "Apple",
-    "quantity": 2,
-    "price": 188.5,
+    "quantity": "2",
+    "price": "188.50000000",
     "fallback_currency": "USD",
     "market": "US",
     "broker": "Futu",
@@ -549,7 +565,7 @@ curl -X POST http://127.0.0.1:80/api/cash-transfers \
   -d '{
     "from_account_id": 3,
     "to_account_id": 9,
-    "source_amount": 500,
+    "source_amount": "500.00",
     "transferred_on": "2026-03-24",
     "note": "rebalance broker cash"
   }'
