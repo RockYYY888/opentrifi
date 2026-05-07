@@ -18,6 +18,7 @@ from app.models import (
     SecurityHoldingTransaction,
     UserAccount,
 )
+from app.schemas import SecurityHoldingTransactionRead
 from app.services import service_context
 from app.fixed_precision import (
 	DECIMAL_ZERO,

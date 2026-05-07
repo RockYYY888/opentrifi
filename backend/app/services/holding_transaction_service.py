@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import Header, HTTPException, Query
 from fastapi.responses import Response
-from sqlmodel import select
+from sqlmodel import Session, select
 
 from app.models import CashAccount, SecurityHolding, SecurityHoldingTransaction
 from app.schemas import (

@@ -10,6 +10,7 @@ from app.models import (
     FixedAsset,
     HoldingTransactionCashSettlement,
     LiabilityEntry,
+    OtherAsset,
     SecurityHolding,
     SecurityHoldingTransaction,
 )
