@@ -42,7 +42,7 @@ export function HoldingsBreakdownChart({
 	const chartHeight = getBarChartHeight(breakdown.length);
 	const visibleHoldingsCount = holdings.filter((holding) => holding.value_cny > 0).length;
 	const { chartContainerRef, compactAxisMode } = useResponsiveChartFrame();
-	const { chartInteractionHandlers } = useChartInteractionLock();
+	const { chartInteractionHandlers, chartTooltipProps } = useChartInteractionLock();
 	const categoryAxisWidth = getAdaptiveCategoryAxisWidth(
 		breakdown.map((item) => item.label),
 		{ compact: compactAxisMode },
@@ -108,6 +108,7 @@ export function HoldingsBreakdownChart({
 										})}
 								/>
 								<Tooltip
+									{...chartTooltipProps}
 									cursor={ANALYTICS_TOOLTIP_CURSOR_STYLE}
 									formatter={(value) => [
 										formatCny(Number(value ?? 0)),

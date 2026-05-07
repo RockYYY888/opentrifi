@@ -93,7 +93,7 @@ export function AllocationChart({
 		chartContainerRef: breakdownChartContainerRef,
 		compactAxisMode,
 	} = useResponsiveChartFrame();
-	const { chartInteractionHandlers } = useChartInteractionLock();
+	const { chartInteractionHandlers, chartTooltipProps } = useChartInteractionLock();
 	const donutLayout = getAllocationDonutLayout(donutChartWidth);
 	const breakdownGroups = useMemo(
 		() =>
@@ -183,6 +183,7 @@ export function AllocationChart({
 									))}
 								</Pie>
 								<Tooltip
+									{...chartTooltipProps}
 									content={({ active, payload }) => {
 										if (!active || !payload || payload.length === 0) {
 											return null;
@@ -313,6 +314,7 @@ export function AllocationChart({
 													})}
 											/>
 											<Tooltip
+												{...chartTooltipProps}
 												formatter={(value) => [
 													formatCny(Number(value ?? 0)),
 													"当前金额",

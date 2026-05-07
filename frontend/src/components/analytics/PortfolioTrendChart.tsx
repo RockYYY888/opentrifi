@@ -339,7 +339,7 @@ export function PortfolioTrendChart({
 	);
 	const { chartContainerRef, chartWidth, compactAxisMode } =
 		useResponsiveChartFrame();
-	const { chartInteractionHandlers } = useChartInteractionLock();
+	const { chartInteractionHandlers, chartTooltipProps } = useChartInteractionLock();
 	const hasData = intervalSelection.hasSelectableRange;
 	const yAxisWidth = getAdaptiveYAxisWidth(
 		[
@@ -596,6 +596,7 @@ export function PortfolioTrendChart({
 								stroke={activeMetricConfig.referenceLineStroke}
 							/>
 							<Tooltip
+								{...chartTooltipProps}
 								content={({ active, payload }) => {
 									if (!active || !payload || payload.length === 0) {
 										return null;

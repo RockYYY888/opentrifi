@@ -8,13 +8,20 @@ import { PlatformBreakdownChart } from "./PlatformBreakdownChart";
 import { PortfolioTrendChart } from "./PortfolioTrendChart";
 import { ReturnTrendChart, createAggregateReturnOption } from "./ReturnTrendChart";
 
+const rechartsState = vi.hoisted(() => ({
+	tooltips: [] as Array<Record<string, unknown>>,
+}));
+
 vi.mock("recharts", () => ({
 	ResponsiveContainer: ({ children }: { children?: ReactNode }) => <>{children}</>,
 	ComposedChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 	BarChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 	PieChart: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 	CartesianGrid: () => null,
-	Tooltip: () => null,
+	Tooltip: (props: Record<string, unknown>) => {
+		rechartsState.tooltips.push(props);
+		return null;
+	},
 	ReferenceLine: () => null,
 	Area: () => null,
 	Line: () => null,
@@ -63,6 +70,7 @@ class MockResizeObserver {
 
 describe("analytics chart interaction lock", () => {
 	beforeEach(() => {
+		rechartsState.tooltips.length = 0;
 		vi.stubGlobal("ResizeObserver", MockResizeObserver);
 		vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(() => ({
 			width: 360,
@@ -87,6 +95,7 @@ describe("analytics chart interaction lock", () => {
 		document.body.style.overscrollBehavior = "";
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
+		rechartsState.tooltips.length = 0;
 	});
 
 	it("applies interactive chart guards to every analytics chart and locks body scroll on touch", async () => {
@@ -196,5 +205,64 @@ describe("analytics chart interaction lock", () => {
 			expect(document.body.style.overflow).toBe("");
 			expect(document.body.style.overscrollBehavior).toBe("");
 		});
+	});
+
+	it("clears touch tooltips after the user lifts their finger", async () => {
+		const { container } = render(
+			<PortfolioTrendChart
+				defaultRange="day"
+				hour_series={[]}
+				day_series={[
+					{ label: "03-01", value: 100 },
+					{ label: "03-02", value: 120 },
+				]}
+				month_series={[]}
+				year_series={[]}
+			/>,
+		);
+
+		const interactiveChart = container.querySelector(".analytics-chart--interactive");
+		expect(interactiveChart).not.toBeNull();
+		expect(rechartsState.tooltips.every((props) => props.active === undefined)).toBe(true);
+
+		rechartsState.tooltips.length = 0;
+		fireEvent.pointerDown(interactiveChart as Element, { pointerType: "touch" });
+
+		await waitFor(() => {
+			expect(rechartsState.tooltips.some((props) => props.active === true)).toBe(true);
+		});
+
+		rechartsState.tooltips.length = 0;
+		fireEvent.pointerUp(interactiveChart as Element, { pointerType: "touch" });
+
+		await waitFor(() => {
+			expect(rechartsState.tooltips.some((props) => props.active === false)).toBe(true);
+		});
+	});
+
+	it("keeps mouse hover tooltips uncontrolled", async () => {
+		const { container } = render(
+			<PortfolioTrendChart
+				defaultRange="day"
+				hour_series={[]}
+				day_series={[
+					{ label: "03-01", value: 100 },
+					{ label: "03-02", value: 120 },
+				]}
+				month_series={[]}
+				year_series={[]}
+			/>,
+		);
+
+		const interactiveChart = container.querySelector(".analytics-chart--interactive");
+		expect(interactiveChart).not.toBeNull();
+
+		rechartsState.tooltips.length = 0;
+		fireEvent.pointerMove(interactiveChart as Element, { pointerType: "mouse" });
+
+		await waitFor(() => {
+			expect(rechartsState.tooltips.length).toBeGreaterThan(0);
+		});
+		expect(rechartsState.tooltips.every((props) => props.active === undefined)).toBe(true);
 	});
 });

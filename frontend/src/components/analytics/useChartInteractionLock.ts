@@ -6,6 +6,7 @@ import { useBodyScrollLock } from "../../hooks/useBodyScrollLock";
 type ChartInteractionHandlers = Pick<
 	HTMLAttributes<HTMLDivElement>,
 	| "onPointerDown"
+	| "onPointerMove"
 	| "onPointerUp"
 	| "onPointerCancel"
 	| "onTouchStart"
@@ -19,9 +20,13 @@ type ChartInteractionHandlers = Pick<
  */
 export function useChartInteractionLock(): {
 	chartInteractionHandlers: ChartInteractionHandlers;
+	chartTooltipProps: { active?: boolean };
 	isTouchInteracting: boolean;
 } {
 	const [isTouchInteracting, setIsTouchInteracting] = useState(false);
+	const [lastPointerType, setLastPointerType] = useState<
+		"mouse" | "touch" | null
+	>(null);
 
 	useBodyScrollLock(isTouchInteracting);
 
@@ -30,6 +35,7 @@ export function useChartInteractionLock(): {
 	}, []);
 
 	const engageInteractionLock = useCallback(() => {
+		setLastPointerType("touch");
 		setIsTouchInteracting(true);
 	}, []);
 
@@ -55,10 +61,16 @@ export function useChartInteractionLock(): {
 		() => ({
 			onPointerDown: (event) => {
 				if (event.pointerType === "mouse") {
+					setLastPointerType("mouse");
 					return;
 				}
 
 				engageInteractionLock();
+			},
+			onPointerMove: (event) => {
+				if (event.pointerType === "mouse") {
+					setLastPointerType("mouse");
+				}
 			},
 			onPointerUp: releaseInteractionLock,
 			onPointerCancel: releaseInteractionLock,
@@ -68,9 +80,14 @@ export function useChartInteractionLock(): {
 		}),
 		[engageInteractionLock, releaseInteractionLock],
 	);
+	const chartTooltipProps = useMemo(
+		() => (lastPointerType === "touch" ? { active: isTouchInteracting } : {}),
+		[isTouchInteracting, lastPointerType],
+	);
 
 	return {
 		chartInteractionHandlers,
+		chartTooltipProps,
 		isTouchInteracting,
 	};
 }

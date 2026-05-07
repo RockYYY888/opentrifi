@@ -288,7 +288,7 @@ export function ReturnTrendChart({
 		[series],
 	);
 	const { chartContainerRef, chartWidth, compactAxisMode } = useResponsiveChartFrame();
-	const { chartInteractionHandlers } = useChartInteractionLock();
+	const { chartInteractionHandlers, chartTooltipProps } = useChartInteractionLock();
 	const intervalSelection = useTimelineRangeSelection(series);
 	const hasData = intervalSelection.hasSelectableRange;
 	const intervalSummary =
@@ -506,6 +506,7 @@ export function ReturnTrendChart({
 								stroke="rgba(0, 155, 193, 0.65)"
 							/>
 							<Tooltip
+								{...chartTooltipProps}
 								content={({ active, payload }) => {
 									if (!active || !payload || payload.length === 0) {
 										return null;

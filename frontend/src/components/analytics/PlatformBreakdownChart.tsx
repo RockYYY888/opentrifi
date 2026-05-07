@@ -61,7 +61,7 @@ export function PlatformBreakdownChart({
 	);
 	const chartHeight = getBarChartHeight(platformBreakdown.length);
 	const { chartContainerRef, compactAxisMode } = useResponsiveChartFrame();
-	const { chartInteractionHandlers } = useChartInteractionLock();
+	const { chartInteractionHandlers, chartTooltipProps } = useChartInteractionLock();
 	const categoryAxisWidth = getAdaptiveCategoryAxisWidth(
 		platformBreakdown.map((item) => item.label),
 		{ compact: compactAxisMode },
@@ -125,6 +125,7 @@ export function PlatformBreakdownChart({
 										})}
 								/>
 								<Tooltip
+									{...chartTooltipProps}
 									cursor={ANALYTICS_TOOLTIP_CURSOR_STYLE}
 									formatter={(value) => [
 										formatCny(Number(value ?? 0)),
