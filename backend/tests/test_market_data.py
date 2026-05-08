@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from decimal import Decimal
 import json
@@ -34,7 +35,7 @@ from app.services.portfolio_read_service import _value_holdings
 
 def _make_quote(
 	symbol: str = "AAPL",
-	price: Decimal | int | str = Decimal("100"),
+	price: Decimal | int | str | float = Decimal("100"),
 	currency: str = "USD",
 ) -> Quote:
 	return Quote(
@@ -46,8 +47,12 @@ def _make_quote(
 	)
 
 
+def D(value: str | int | float) -> Decimal:
+	return Decimal(str(value))
+
+
 class SequenceQuoteProvider:
-	def __init__(self, outcomes: list[object]) -> None:
+	def __init__(self, outcomes: Sequence[Quote | Exception]) -> None:
 		self._outcomes = outcomes
 		self.calls = 0
 		self.symbols: list[str] = []
@@ -62,7 +67,7 @@ class SequenceQuoteProvider:
 
 
 class SequenceRateProvider:
-	def __init__(self, outcomes: list[object]) -> None:
+	def __init__(self, outcomes: Sequence[Decimal | int | str | Exception]) -> None:
 		self._outcomes = outcomes
 		self.calls = 0
 		self.pairs: list[tuple[str, str]] = []
@@ -113,7 +118,7 @@ class DeferredRateProvider:
 
 
 class SequenceSearchProvider:
-	def __init__(self, outcomes: list[object]) -> None:
+	def __init__(self, outcomes: Sequence[list[SecuritySearchResult] | Exception]) -> None:
 		self._outcomes = outcomes
 		self.calls = 0
 		self.queries: list[str] = []
@@ -1114,7 +1119,7 @@ def test_value_holdings_turns_provider_failure_into_warning(
 		user_id="tester",
 		symbol="AAPL",
 		name="Apple",
-		quantity=2,
+		quantity=D("2"),
 		fallback_currency="USD",
 	)
 	monkeypatch.setattr(service_context, "market_data_client", FailingMarketDataClient())
@@ -1137,7 +1142,7 @@ def test_value_holdings_fetches_quotes_concurrently(
 			user_id="tester",
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="USD",
 			market="US",
 		),
@@ -1145,7 +1150,7 @@ def test_value_holdings_fetches_quotes_concurrently(
 			user_id="tester",
 			symbol="MSFT",
 			name="Microsoft",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="USD",
 			market="US",
 		),
@@ -1153,7 +1158,7 @@ def test_value_holdings_fetches_quotes_concurrently(
 			user_id="tester",
 			symbol="GOOG",
 			name="Alphabet",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="USD",
 			market="US",
 		),

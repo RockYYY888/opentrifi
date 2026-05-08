@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import base64
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from time import monotonic, time
-from typing import Callable, Generic, TypeVar, cast
-
-from redis import Redis
+from typing import Callable, Generic, Protocol, TypeVar, cast
 
 from app.services.market_data_parts.common import Quote, SecuritySearchResult
 from app.typed_json import (
@@ -23,6 +22,16 @@ from app.typed_json import (
 
 CacheValue = TypeVar("CacheValue")
 CACHE_SERIALIZER_VERSION = 2
+
+
+class RedisCacheClient(Protocol):
+	def get(self, key: str | bytes) -> bytes | None: ...
+
+	def set(self, key: str | bytes, value: bytes, ex: int | None = None) -> object: ...
+
+	def delete(self, *keys: str | bytes) -> int: ...
+
+	def scan_iter(self, pattern: str) -> Iterable[bytes | str]: ...
 
 
 def _decimal_now_from_monotonic() -> Decimal:
@@ -195,7 +204,7 @@ class RedisBackedTTLCache(Generic[CacheValue]):
 
 	def __init__(
 		self,
-		redis_client: Redis,
+		redis_client: RedisCacheClient,
 		prefix: str,
 		now: Callable[[], Decimal] | None = None,
 		stale_ttl_seconds: Decimal | int | None = None,
