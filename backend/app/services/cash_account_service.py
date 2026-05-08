@@ -47,6 +47,7 @@ from app.services.common_service import (
 from app.fixed_precision import (
 	DECIMAL_ZERO,
 	FIXED_EPSILON,
+	FixedNumber,
 	decimal_to_float,
 	display_money,
 	is_effectively_zero,
@@ -197,10 +198,10 @@ async def list_accounts(
 
 def _resolve_cash_transfer_target_amount(
 	*,
-	source_amount: Decimal | float | int,
+	source_amount: FixedNumber,
 	source_currency: str,
 	target_currency: str,
-	provided_target_amount: Decimal | float | int | None,
+	provided_target_amount: FixedNumber | None,
 ) -> Decimal:
 	expected_target_amount, _fx_rate = _convert_cash_amount_between_currencies(
 		amount=source_amount,

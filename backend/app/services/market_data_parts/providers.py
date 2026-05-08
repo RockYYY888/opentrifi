@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from decimal import Decimal
 
 import httpx
 
+from app.fixed_precision import quantize_decimal, to_decimal
 from app.services.market_data_parts.common import (
 	BITGET_STABLE_QUOTES,
 	EASTMONEY_SEARCH_TOKEN,
@@ -29,7 +31,7 @@ class YahooQuoteProvider:
 	YAHOO_QUOTE_URL = "https://query1.finance.yahoo.com/v7/finance/quote"
 	YAHOO_CHART_URL = "https://query1.finance.yahoo.com/v8/finance/chart"
 
-	def __init__(self, timeout: float = 10.0) -> None:
+	def __init__(self, timeout: int = 10) -> None:
 		self.timeout = timeout
 
 	async def _request_json(
@@ -82,7 +84,7 @@ class YahooQuoteProvider:
 		return Quote(
 			symbol=result.get("symbol", symbol),
 			name=result.get("shortName") or result.get("longName") or symbol,
-			price=float(price),
+			price=quantize_decimal(price),
 			currency=str(currency).upper(),
 			market_time=market_time,
 		)
@@ -101,7 +103,7 @@ class YahooQuoteProvider:
 			closes = (quotes[0] if quotes else {}).get("close") or []
 			price = next(
 				(
-					float(close_value)
+					quantize_decimal(close_value)
 					for close_value in reversed(closes)
 					if close_value not in (None, 0)
 				),
@@ -115,7 +117,7 @@ class YahooQuoteProvider:
 		return Quote(
 			symbol=str(meta.get("symbol") or symbol),
 			name=str(meta.get("shortName") or meta.get("longName") or symbol),
-			price=float(price),
+			price=quantize_decimal(price),
 			currency=str(currency).upper(),
 			market_time=_parse_epoch_millis(meta.get("regularMarketTime")),
 		)
@@ -156,7 +158,7 @@ class YahooQuoteProvider:
 class EastMoneyQuoteProvider:
 	EASTMONEY_QUOTE_URL = "https://push2.eastmoney.com/api/qt/stock/get"
 
-	def __init__(self, timeout: float = 10.0) -> None:
+	def __init__(self, timeout: int = 10) -> None:
 		self.timeout = timeout
 
 	async def fetch_quote(self, symbol: str) -> Quote:
@@ -193,7 +195,7 @@ class EastMoneyQuoteProvider:
 			raise QuoteLookupError(f"No Eastmoney quote data returned for {normalized_symbol}.")
 
 		scale = 1000 if normalized_symbol.endswith(".HK") else 100
-		price = float(raw_price) / scale
+		price = quantize_decimal(to_decimal(raw_price) / Decimal(scale))
 		if price <= 0:
 			raise QuoteLookupError(f"Incomplete Eastmoney quote data returned for {normalized_symbol}.")
 
@@ -208,7 +210,7 @@ class EastMoneyQuoteProvider:
 class TencentQuoteProvider:
 	TENCENT_QUOTE_URL = "https://qt.gtimg.cn/q="
 
-	def __init__(self, timeout: float = 10.0) -> None:
+	def __init__(self, timeout: int = 10) -> None:
 		self.timeout = timeout
 
 	@staticmethod
@@ -258,8 +260,8 @@ class TencentQuoteProvider:
 
 		raw_price = fields[3]
 		try:
-			price = float(raw_price)
-		except (TypeError, ValueError) as exc:
+			price = quantize_decimal(raw_price)
+		except (ArithmeticError, TypeError, ValueError) as exc:
 			raise QuoteLookupError(
 				f"Incomplete Tencent quote data returned for {normalized_symbol}.",
 			) from exc
@@ -280,7 +282,7 @@ class TencentQuoteProvider:
 class BitgetQuoteProvider:
 	BITGET_TICKER_URL = "https://api.bitget.com/api/v2/spot/market/tickers"
 
-	def __init__(self, timeout: float = 10.0) -> None:
+	def __init__(self, timeout: int = 10) -> None:
 		self.timeout = timeout
 
 	async def fetch_quote(self, symbol: str) -> Quote:
@@ -291,7 +293,7 @@ class BitgetQuoteProvider:
 			return Quote(
 				symbol=normalized_symbol,
 				name="Tether USDt" if base == "USDT" else "USD Coin",
-				price=1.0,
+				price=Decimal("1"),
 				currency="USD",
 				market_time=datetime.now(timezone.utc),
 			)
@@ -322,8 +324,8 @@ class BitgetQuoteProvider:
 			raise QuoteLookupError(f"No Bitget quote data returned for {normalized_symbol}.")
 
 		try:
-			price = float(raw_price)
-		except (TypeError, ValueError) as exc:
+			price = quantize_decimal(raw_price)
+		except (ArithmeticError, TypeError, ValueError) as exc:
 			raise QuoteLookupError(
 				f"Incomplete Bitget quote data returned for {normalized_symbol}.",
 			) from exc
@@ -344,7 +346,7 @@ class BitgetQuoteProvider:
 class YahooSecuritySearchProvider:
 	YAHOO_SEARCH_URL = "https://query1.finance.yahoo.com/v1/finance/search"
 
-	def __init__(self, timeout: float = 10.0) -> None:
+	def __init__(self, timeout: int = 10) -> None:
 		self.timeout = timeout
 
 	async def search(self, query: str) -> list[SecuritySearchResult]:
@@ -418,7 +420,7 @@ class YahooSecuritySearchProvider:
 class EastMoneySecuritySearchProvider:
 	EASTMONEY_SEARCH_URL = "https://searchapi.eastmoney.com/api/suggest/get"
 
-	def __init__(self, timeout: float = 10.0) -> None:
+	def __init__(self, timeout: int = 10) -> None:
 		self.timeout = timeout
 
 	async def search(self, query: str) -> list[SecuritySearchResult]:
@@ -469,10 +471,10 @@ class EastMoneySecuritySearchProvider:
 class FrankfurterRateProvider:
 	FRANKFURTER_URL = "https://api.frankfurter.dev/v1/latest"
 
-	def __init__(self, timeout: float = 10.0) -> None:
+	def __init__(self, timeout: int = 10) -> None:
 		self.timeout = timeout
 
-	async def fetch_rate(self, from_currency: str, to_currency: str) -> float:
+	async def fetch_rate(self, from_currency: str, to_currency: str) -> Decimal:
 		"""Fetch a conversion rate using Frankfurter's ECB-backed feed."""
 		try:
 			async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -491,15 +493,15 @@ class FrankfurterRateProvider:
 		if rate in (None, 0):
 			raise QuoteLookupError(f"No FX rate returned for {from_currency}/{to_currency}.")
 
-		return float(rate)
+		return quantize_decimal(rate)
 
 class OpenExchangeRateProvider:
 	OPEN_EXCHANGE_RATE_URL = "https://open.er-api.com/v6/latest"
 
-	def __init__(self, timeout: float = 10.0) -> None:
+	def __init__(self, timeout: int = 10) -> None:
 		self.timeout = timeout
 
-	async def fetch_rate(self, from_currency: str, to_currency: str) -> float:
+	async def fetch_rate(self, from_currency: str, to_currency: str) -> Decimal:
 		"""Fetch a conversion rate from Open ExchangeRate-API as a fallback source."""
 		try:
 			async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -519,4 +521,4 @@ class OpenExchangeRateProvider:
 		if rate in (None, 0):
 			raise QuoteLookupError(f"No FX rate returned for {from_currency}/{to_currency}.")
 
-		return float(rate)
+		return quantize_decimal(rate)

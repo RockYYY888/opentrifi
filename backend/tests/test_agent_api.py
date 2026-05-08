@@ -90,11 +90,11 @@ class StaticMarketDataClient:
 		*,
 		prefer_stale: bool = False,
 		schedule_stale_refresh: bool = True,
-	) -> tuple[float, list[str]]:
+	) -> tuple[Decimal, list[str]]:
 		del prefer_stale, schedule_stale_refresh
 		if from_currency.upper() == to_currency.upper():
-			return 1.0, []
-		return 7.0, []
+			return Decimal("1"), []
+		return Decimal("7"), []
 
 	async def fetch_hourly_price_series(
 		self,
@@ -103,7 +103,7 @@ class StaticMarketDataClient:
 		market: str | None = None,
 		start_at: datetime,
 		end_at: datetime,
-	) -> tuple[list[tuple[datetime, float]], str | None, list[str]]:
+	) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
 		return [], "USD", []
 
 	async def fetch_quote(
@@ -119,7 +119,7 @@ class StaticMarketDataClient:
 			Quote(
 				symbol=symbol,
 				name="Apple",
-				price=188.5,
+				price=Decimal("188.5"),
 				currency="USD",
 				market_time=datetime(2026, 3, 9, 12, 0, tzinfo=timezone.utc),
 			),

@@ -38,7 +38,7 @@ from app.services.market_data import (
     normalize_symbol as normalize_market_symbol,
     normalize_symbol_for_market as normalize_market_symbol_for_market,
 )
-from app.fixed_precision import decimal_to_string, display_percent, to_decimal
+from app.fixed_precision import FixedNumber, decimal_to_string, display_percent, to_decimal
 
 FEEDBACK_TIMEZONE = ZoneInfo("Asia/Shanghai")
 MAX_DAILY_FEEDBACK_SUBMISSIONS = 3
@@ -271,8 +271,8 @@ def _touch_model(
 	model.updated_at = utc_now()
 
 def _calculate_return_pct(
-	current_value: Decimal | float | int,
-	basis_value: Decimal | float | int | None,
+	current_value: FixedNumber,
+	basis_value: FixedNumber | None,
 ) -> Decimal | None:
 	normalized_basis = to_decimal(basis_value, default=Decimal("0"))
 	if basis_value is None or normalized_basis <= 0:

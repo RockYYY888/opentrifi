@@ -8,7 +8,14 @@ from typing import Any
 from fastapi import HTTPException
 from sqlmodel import select
 
-from app.fixed_precision import decimal_to_float, display_money, display_percent, display_price, display_quantity
+from app.fixed_precision import (
+	decimal_to_float,
+	display_money,
+	display_percent,
+	display_price,
+	display_quantity,
+	to_decimal,
+)
 from app.models import AssetMutationAudit, SecurityHoldingTransaction
 from app.schemas import AssetRecordRead
 from app.services.auth_service import CurrentUserDependency
@@ -89,7 +96,13 @@ def _is_cash_account_business_record(audit: AssetMutationAudit) -> bool:
 
 
 def _is_numeric_value(value: Any) -> bool:
-	return isinstance(value, (int, float, Decimal))
+	if value is None or isinstance(value, bool):
+		return False
+	try:
+		to_decimal(value)
+	except (ArithmeticError, TypeError, ValueError):
+		return False
+	return True
 
 
 def _resolve_cash_account_record(audit: AssetMutationAudit) -> AssetRecordRead | None:

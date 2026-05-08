@@ -137,11 +137,11 @@ class StaticMarketDataClient:
 		*,
 		prefer_stale: bool = False,
 		schedule_stale_refresh: bool = True,
-	) -> tuple[float, list[str]]:
+	) -> tuple[Decimal, list[str]]:
 		del prefer_stale, schedule_stale_refresh
 		if from_currency.upper() == to_currency.upper():
-			return 1.0, []
-		return 7.0, []
+			return Decimal("1"), []
+		return Decimal("7"), []
 
 	async def fetch_hourly_price_series(
 		self,
@@ -150,7 +150,7 @@ class StaticMarketDataClient:
 		market: str | None = None,
 		start_at: datetime,
 		end_at: datetime,
-	) -> tuple[list[tuple[datetime, float]], str | None, list[str]]:
+	) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
 		return [], "USD", []
 
 	async def fetch_quote(
@@ -166,7 +166,7 @@ class StaticMarketDataClient:
 			Quote(
 				symbol=symbol,
 				name="Apple",
-				price=100.0,
+				price=Decimal("100"),
 				currency="USD",
 				market_time=datetime(2026, 3, 1, tzinfo=timezone.utc),
 			),
@@ -2017,7 +2017,7 @@ def test_realtime_sampler_samples_all_users_with_one_quote_fetch_per_unique_symb
 			*,
 			prefer_stale: bool = False,
 			schedule_stale_refresh: bool = True,
-		) -> tuple[float, list[str]]:
+		) -> tuple[Decimal, list[str]]:
 			del prefer_stale, schedule_stale_refresh
 			fx_calls.append((from_currency, to_currency))
 			return await super().fetch_fx_rate(
@@ -2886,7 +2886,7 @@ def test_process_pending_holding_history_sync_rebuilds_hourly_rows(
 			market: str | None = None,
 			start_at: datetime,
 			end_at: datetime,
-		) -> tuple[list[tuple[datetime, float]], str | None, list[str]]:
+		) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
 			return [
 				(start_at.replace(minute=0, second=0, microsecond=0), 80.0),
 				((end_at - timedelta(hours=1)).replace(minute=0, second=0, microsecond=0), 100.0),
@@ -2964,7 +2964,7 @@ def test_process_pending_holding_history_sync_uses_transaction_state_per_period(
 			market: str | None = None,
 			start_at: datetime,
 			end_at: datetime,
-		) -> tuple[list[tuple[datetime, float]], str | None, list[str]]:
+		) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
 			return [
 				(first_bucket, 80.0),
 				(second_trade_bucket, 100.0),
@@ -3038,11 +3038,11 @@ def test_process_pending_holding_history_sync_preserves_prior_hours_for_backfill
 			market: str | None = None,
 			start_at: datetime,
 			end_at: datetime,
-		) -> tuple[list[tuple[datetime, float]], str | None, list[str]]:
-			hours: list[tuple[datetime, float]] = []
+		) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
+			hours: list[tuple[datetime, Decimal]] = []
 			cursor = start_at.replace(minute=0, second=0, microsecond=0)
 			while cursor < end_at:
-				hours.append((cursor, 20.0))
+				hours.append((cursor, Decimal("20")))
 				cursor += timedelta(hours=1)
 			return hours, "USD", []
 
@@ -3059,7 +3059,7 @@ def test_process_pending_holding_history_sync_preserves_prior_hours_for_backfill
 				Quote(
 					symbol=symbol,
 					name="Alibaba",
-					price=20.0,
+					price=Decimal("20"),
 					currency="USD",
 					market_time=fixed_now,
 				),
@@ -3149,11 +3149,11 @@ def test_process_pending_holding_history_sync_applies_holding_adjustment_on_effe
 			market: str | None = None,
 			start_at: datetime,
 			end_at: datetime,
-		) -> tuple[list[tuple[datetime, float]], str | None, list[str]]:
-			hours: list[tuple[datetime, float]] = []
+		) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
+			hours: list[tuple[datetime, Decimal]] = []
 			cursor = start_at.replace(minute=0, second=0, microsecond=0)
 			while cursor < end_at:
-				hours.append((cursor, 20.0))
+				hours.append((cursor, Decimal("20")))
 				cursor += timedelta(hours=1)
 			return hours, "USD", []
 
@@ -3170,7 +3170,7 @@ def test_process_pending_holding_history_sync_applies_holding_adjustment_on_effe
 				Quote(
 					symbol=symbol,
 					name="Alibaba",
-					price=20.0,
+					price=Decimal("20"),
 					currency="USD",
 					market_time=fixed_now,
 				),
@@ -3248,11 +3248,11 @@ def test_rebuild_user_holding_history_snapshots_backfills_holdings_without_trans
 			market: str | None = None,
 			start_at: datetime,
 			end_at: datetime,
-		) -> tuple[list[tuple[datetime, float]], str | None, list[str]]:
-			hours: list[tuple[datetime, float]] = []
+		) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
+			hours: list[tuple[datetime, Decimal]] = []
 			cursor = start_at.replace(minute=0, second=0, microsecond=0)
 			while cursor < end_at:
-				hours.append((cursor, 20.0))
+				hours.append((cursor, Decimal("20")))
 				cursor += timedelta(hours=1)
 			return hours, "USD", []
 
@@ -3269,7 +3269,7 @@ def test_rebuild_user_holding_history_snapshots_backfills_holdings_without_trans
 				Quote(
 					symbol=symbol,
 					name="Projected Holding",
-					price=20.0,
+					price=Decimal("20"),
 					currency="USD",
 					market_time=fixed_now,
 				),

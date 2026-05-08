@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 
 import httpx
 
@@ -40,13 +41,13 @@ def _describe_http_error(exc: httpx.HTTPError) -> str:
 
 	return exc.__class__.__name__
 
-def _parse_epoch_millis(value: str | int | float | None) -> datetime | None:
+def _parse_epoch_millis(value: object | None) -> datetime | None:
 	if value in (None, ""):
 		return None
 
 	try:
-		numeric_value = int(float(value))
-	except (TypeError, ValueError):
+		numeric_value = int(Decimal(str(value)))
+	except (InvalidOperation, TypeError, ValueError):
 		return None
 
 	if numeric_value <= 0:
@@ -77,7 +78,7 @@ def _parse_tencent_market_time(value: str | None) -> datetime | None:
 class Quote:
 	symbol: str
 	name: str
-	price: float
+	price: Decimal
 	currency: str
 	market_time: datetime | None
 

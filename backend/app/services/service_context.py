@@ -17,13 +17,13 @@ settings = get_settings()
 market_data_client = MarketDataClient(
 	quote_cache=RedisBackedTTLCache(
 		runtime_state.redis_client,
-		"asset-tracker:runtime:market-quotes",
+		"asset-tracker:v2:runtime:market-quotes",
 		stale_ttl_seconds=6 * 60 * 60,
 	),
 	search_cache=TTLCache(),
 	fx_cache=RedisBackedTTLCache(
 		runtime_state.redis_client,
-		"asset-tracker:runtime:market-fx",
+		"asset-tracker:v2:runtime:market-fx",
 		stale_ttl_seconds=6 * 60 * 60,
 	),
 	quote_ttl_seconds=1,

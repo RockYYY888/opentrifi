@@ -51,9 +51,7 @@ cd "${ROOT_DIR}/backend"
 
 uv run python -m compileall app
 uv run ruff check app tests ../scripts
-
-if ! uv run pyright app tests; then
-	printf "Pyright reported gradual typing issues; tests will still run.\n" >&2
-fi
+uv run python ../scripts/check_backend_decimal_guard.py
+uv run python ../scripts/check_pyright_ratchet.py --baseline "${ASSET_TRACKER_PYRIGHT_BASELINE:-601}" -- app tests
 
 uv run pytest "$@"

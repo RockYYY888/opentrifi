@@ -85,7 +85,7 @@ def _derive_feedback_status(feedback: UserFeedback) -> str:
 		return "IN_PROGRESS"
 	return "OPEN"
 
-def _feedback_sort_key(feedback: UserFeedback) -> tuple[int, int, float]:
+def _feedback_sort_key(feedback: UserFeedback) -> tuple[int, int, int, int, int, int, int]:
 	status_rank = {
 		"OPEN": 0,
 		"ACKED": 1,
@@ -107,10 +107,15 @@ def _feedback_sort_key(feedback: UserFeedback) -> tuple[int, int, float]:
 	created_at = feedback.created_at
 	if created_at.tzinfo is None:
 		created_at = created_at.replace(tzinfo=timezone.utc)
+	created_at = created_at.astimezone(timezone.utc)
 	return (
 		status_rank.get(status_value, 3),
 		priority_rank.get(priority_value, 3),
-		-created_at.timestamp(),
+		-created_at.toordinal(),
+		-created_at.hour,
+		-created_at.minute,
+		-created_at.second,
+		-created_at.microsecond,
 	)
 
 def _to_feedback_read(feedback: UserFeedback) -> UserFeedbackRead:

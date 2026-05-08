@@ -129,7 +129,7 @@ def _to_json_value(value: object) -> object:
 			str(key): _to_json_value(item)
 			for key, item in value.items()
 		}
-	if value is None or isinstance(value, (str, int, float, bool)):
+	if value is None or isinstance(value, (str, int, bool)):
 		return value
 
 	raise TypeError(f"Unsupported runtime state value type: {type(value).__name__}")
@@ -502,8 +502,8 @@ def set_last_realtime_analytics_sampled_at(value: datetime | None) -> None:
 def redis_lock(
 	name: str,
 	*,
-	timeout: float = 30,
-	blocking_timeout: float = 30,
+	timeout: int = 30,
+	blocking_timeout: int = 30,
 ) -> Iterator[None]:
 	lock = redis_client.lock(
 		_runtime_lock_key(name),
@@ -526,8 +526,8 @@ def redis_lock(
 async def async_redis_lock(
 	name: str,
 	*,
-	timeout: float = 30,
-	blocking_timeout: float = 30,
+	timeout: int = 30,
+	blocking_timeout: int = 30,
 ) -> AsyncIterator[None]:
 	lock = redis_client.lock(
 		_runtime_lock_key(name),

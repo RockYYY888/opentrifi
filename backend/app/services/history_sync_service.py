@@ -78,8 +78,8 @@ def _build_hour_buckets(start_at: datetime, end_at: datetime) -> list[datetime]:
 
 def _fill_hourly_prices(
 	hours: list[datetime],
-	known_points: list[tuple[datetime, float]],
-	fallback_price: Decimal | float,
+	known_points: list[tuple[datetime, Decimal]],
+	fallback_price: Decimal,
 ) -> dict[datetime, Decimal]:
 	known_map: dict[datetime, Decimal] = {}
 	for bucket, price in known_points:

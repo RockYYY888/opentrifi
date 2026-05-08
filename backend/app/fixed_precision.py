@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal, ROUND_HALF_UP
 from typing import TypeAlias
 
-FixedNumber: TypeAlias = Decimal | int | float | str
+FixedNumber: TypeAlias = Decimal | int | str
 
 DB_QUANTUM = Decimal("0.00000001")
 MONEY_QUANTUM = DB_QUANTUM

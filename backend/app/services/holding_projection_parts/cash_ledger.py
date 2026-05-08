@@ -7,7 +7,7 @@ from decimal import Decimal
 from fastapi import HTTPException
 from sqlmodel import Session, select
 
-from app.fixed_precision import DECIMAL_ZERO, quantize_decimal, to_decimal
+from app.fixed_precision import DECIMAL_ZERO, FixedNumber, quantize_decimal, to_decimal
 from app.models import CashAccount, CashLedgerEntry
 from app.services import service_context
 from app.services.common_service import (
@@ -32,7 +32,7 @@ def _prepend_note_entry(existing_note: str | None, entry: str) -> str:
 
 def _convert_cash_amount_between_currencies(
 	*,
-	amount: Decimal | float | int,
+	amount: FixedNumber,
 	from_currency: str,
 	to_currency: str,
 ) -> tuple[Decimal, Decimal]:
@@ -129,7 +129,7 @@ def _create_cash_ledger_entry(
 	user_id: str,
 	cash_account_id: int,
 	entry_type: str,
-	amount: Decimal | float | int,
+	amount: FixedNumber,
 	currency: str,
 	happened_on: date,
 	note: str | None = None,
@@ -155,7 +155,7 @@ def _reconcile_cash_account_initial_ledger_entry(
 	session: Session,
 	*,
 	account: CashAccount,
-	target_balance: Decimal | float | int,
+	target_balance: FixedNumber,
 ) -> CashLedgerEntry:
 	initial_entry = _get_cash_account_initial_ledger_entry(
 		session,

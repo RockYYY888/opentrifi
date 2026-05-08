@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import Iterator
 from datetime import date, timedelta
+from decimal import Decimal
 import threading
 
 import pytest
@@ -26,11 +27,11 @@ class StaticDashboardMarketDataClient:
 		*,
 		prefer_stale: bool = False,
 		schedule_stale_refresh: bool = True,
-	) -> tuple[float, list[str]]:
+	) -> tuple[Decimal, list[str]]:
 		del prefer_stale, schedule_stale_refresh
 		if from_currency.upper() == to_currency.upper():
-			return 1.0, []
-		return 7.0, []
+			return Decimal("1"), []
+		return Decimal("7"), []
 
 	async def fetch_quote(
 		self,

@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import asyncio
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 import logging
+from typing import Protocol, TypeVar
 
 import httpx
 
+from app.fixed_precision import quantize_decimal
 from app.services.cache import TTLCache
 from app.services.market_data_parts.common import Quote, QuoteLookupError, SecuritySearchResult
 from app.services.market_data_parts.providers import (
@@ -26,21 +29,43 @@ from app.services.market_data_parts.search_catalog import (
 from app.services.market_data_parts.symbols import infer_security_market, normalize_symbol_for_market
 
 logger = logging.getLogger(__name__)
+CacheValue = TypeVar("CacheValue")
+
+
+class QuoteProvider(Protocol):
+	async def fetch_quote(self, symbol: str) -> Quote: ...
+
+
+class RateProvider(Protocol):
+	async def fetch_rate(self, from_currency: str, to_currency: str) -> Decimal: ...
+
+
+class SecuritySearchProvider(Protocol):
+	async def search(self, query: str) -> list[SecuritySearchResult]: ...
+
+
+class CacheStore(Protocol[CacheValue]):
+	def get(self, key: str) -> CacheValue | None: ...
+	def get_stale(self, key: str) -> CacheValue | None: ...
+	def set(self, key: str, value: CacheValue, ttl_seconds: Decimal | int) -> CacheValue: ...
+	def clear(self) -> None: ...
+	def expire_all(self) -> None: ...
+
 
 class MarketDataClient:
 	def __init__(
 		self,
-		quote_provider: YahooQuoteProvider | None = None,
-		fallback_quote_provider: EastMoneyQuoteProvider | None = None,
-		backup_quote_provider: TencentQuoteProvider | None = None,
-		crypto_quote_provider: BitgetQuoteProvider | None = None,
-		china_search_provider: EastMoneySecuritySearchProvider | None = None,
-		search_provider: YahooSecuritySearchProvider | None = None,
-		fx_provider: FrankfurterRateProvider | None = None,
-		fallback_fx_provider: OpenExchangeRateProvider | None = None,
-		quote_cache: TTLCache[Quote] | None = None,
-		search_cache: TTLCache[list[SecuritySearchResult]] | None = None,
-		fx_cache: TTLCache[float] | None = None,
+		quote_provider: QuoteProvider | None = None,
+		fallback_quote_provider: QuoteProvider | None = None,
+		backup_quote_provider: QuoteProvider | None = None,
+		crypto_quote_provider: QuoteProvider | None = None,
+		china_search_provider: SecuritySearchProvider | None = None,
+		search_provider: SecuritySearchProvider | None = None,
+		fx_provider: RateProvider | None = None,
+		fallback_fx_provider: RateProvider | None = None,
+		quote_cache: CacheStore[Quote] | None = None,
+		search_cache: CacheStore[list[SecuritySearchResult]] | None = None,
+		fx_cache: CacheStore[Decimal] | None = None,
 		quote_ttl_seconds: int = 60,
 		search_ttl_seconds: int = 300,
 		fx_ttl_seconds: int = 600,
@@ -55,7 +80,7 @@ class MarketDataClient:
 		self.fallback_fx_provider = fallback_fx_provider or OpenExchangeRateProvider()
 		self.quote_cache = quote_cache or TTLCache[Quote]()
 		self.search_cache = search_cache or TTLCache[list[SecuritySearchResult]]()
-		self.fx_cache = fx_cache or TTLCache[float]()
+		self.fx_cache = fx_cache or TTLCache[Decimal]()
 		self.quote_ttl_seconds = quote_ttl_seconds
 		self.search_ttl_seconds = search_ttl_seconds
 		self.fx_ttl_seconds = fx_ttl_seconds
@@ -64,7 +89,7 @@ class MarketDataClient:
 
 	async def _fetch_quote_with_retry(
 		self,
-		provider: YahooQuoteProvider | EastMoneyQuoteProvider | TencentQuoteProvider | BitgetQuoteProvider,
+		provider: QuoteProvider,
 		symbol: str,
 		retry_attempts: int = 0,
 	) -> Quote:
@@ -84,17 +109,17 @@ class MarketDataClient:
 
 	async def _fetch_fx_rate_with_retry(
 		self,
-		provider: FrankfurterRateProvider | OpenExchangeRateProvider,
+		provider: RateProvider,
 		from_currency: str,
 		to_currency: str,
 		retry_attempts: int = 0,
-	) -> float:
+	) -> Decimal:
 		"""Retry transient FX lookups a limited number of times before failing."""
 		last_error: QuoteLookupError | ValueError | None = None
 
 		for attempt in range(retry_attempts + 1):
 			try:
-				return await provider.fetch_rate(from_currency, to_currency)
+				return quantize_decimal(await provider.fetch_rate(from_currency, to_currency))
 			except (QuoteLookupError, ValueError) as exc:
 				last_error = exc
 				if attempt >= retry_attempts:
@@ -115,12 +140,7 @@ class MarketDataClient:
 	def _resolve_quote_provider_chain(
 		self,
 		resolved_market: str | None,
-	) -> list[
-		tuple[
-			YahooQuoteProvider | EastMoneyQuoteProvider | TencentQuoteProvider | BitgetQuoteProvider,
-			int,
-		]
-	]:
+	) -> list[tuple[QuoteProvider, int]]:
 		if resolved_market in {"HK", "CN"}:
 			return [
 				(self.fallback_quote_provider, 1),
@@ -193,7 +213,7 @@ class MarketDataClient:
 		self,
 		from_code: str,
 		to_code: str,
-	) -> float:
+	) -> Decimal:
 		errors: list[str] = []
 		rate_providers = (
 			(self.fx_provider, 1),
@@ -298,12 +318,12 @@ class MarketDataClient:
 		*,
 		prefer_stale: bool = False,
 		schedule_stale_refresh: bool = True,
-	) -> tuple[float, list[str]]:
+	) -> tuple[Decimal, list[str]]:
 		"""Fetch an FX rate from the dedicated FX provider and fall back to stale cache."""
 		from_code = from_currency.strip().upper()
 		to_code = to_currency.strip().upper()
 		if from_code == to_code:
-			return 1.0, []
+			return Decimal("1"), []
 
 		cache_key = f"{from_code}:{to_code}"
 		cached_rate = self.fx_cache.get(cache_key)
@@ -338,7 +358,7 @@ class MarketDataClient:
 		market: str | None = None,
 		start_at: datetime,
 		end_at: datetime,
-	) -> tuple[list[tuple[datetime, float]], str | None, list[str]]:
+	) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
 		"""Fetch price history from a time point to now with minimal requests and bucket-ready output."""
 		normalized_market = (market or "").strip().upper() or None
 		normalized_symbol = normalize_symbol_for_market(symbol, normalized_market)
@@ -359,7 +379,7 @@ class MarketDataClient:
 			interval: str,
 			segment_start: datetime,
 			segment_end: datetime,
-		) -> tuple[list[tuple[datetime, float]], str | None, str | None]:
+		) -> tuple[list[tuple[datetime, Decimal]], str | None, str | None]:
 			url = f"https://query1.finance.yahoo.com/v8/finance/chart/{normalized_symbol}"
 			params = {
 				"period1": int(segment_start.timestamp()),
@@ -369,7 +389,7 @@ class MarketDataClient:
 				"includePrePost": "false",
 			}
 			try:
-				async with httpx.AsyncClient(timeout=15.0) as client:
+				async with httpx.AsyncClient(timeout=15) as client:
 					response = await client.get(
 						url,
 						params=params,
@@ -389,7 +409,7 @@ class MarketDataClient:
 			quotes = (result.get("indicators") or {}).get("quote") or []
 			closes = (quotes[0] if quotes else {}).get("close") or []
 			currency = (result.get("meta") or {}).get("currency")
-			points: list[tuple[datetime, float]] = []
+			points: list[tuple[datetime, Decimal]] = []
 			for index, raw_timestamp in enumerate(timestamps):
 				try:
 					timestamp = datetime.fromtimestamp(int(raw_timestamp), tz=timezone.utc)
@@ -403,8 +423,8 @@ class MarketDataClient:
 					continue
 
 				try:
-					price = float(close_value)
-				except (TypeError, ValueError):
+					price = quantize_decimal(close_value)
+				except (ArithmeticError, TypeError, ValueError):
 					continue
 				if price <= 0:
 					continue
@@ -418,7 +438,7 @@ class MarketDataClient:
 			return points, str(currency).upper() if currency else None, None
 
 		warnings: list[str] = []
-		all_points: list[tuple[datetime, float]] = []
+		all_points: list[tuple[datetime, Decimal]] = []
 		currency: str | None = None
 
 		# Yahoo's 1h chart API has long-range constraints. Chunk requests by window to keep
@@ -439,7 +459,7 @@ class MarketDataClient:
 				currency = hourly_currency or currency
 			segment_start = segment_end
 
-		deduped_points: dict[datetime, float] = {}
+		deduped_points: dict[datetime, Decimal] = {}
 		for bucket, price in all_points:
 			deduped_points[bucket] = price
 

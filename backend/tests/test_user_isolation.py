@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import Iterator
 from datetime import datetime, timezone
+from decimal import Decimal
 
 import pytest
 from fastapi import HTTPException
@@ -54,11 +55,11 @@ class StaticMarketDataClient:
 		*,
 		prefer_stale: bool = False,
 		schedule_stale_refresh: bool = True,
-	) -> tuple[float, list[str]]:
+	) -> tuple[Decimal, list[str]]:
 		del prefer_stale, schedule_stale_refresh
 		if from_currency.upper() == to_currency.upper():
-			return 1.0, []
-		return 7.0, []
+			return Decimal("1"), []
+		return Decimal("7"), []
 
 	async def fetch_hourly_price_series(
 		self,
@@ -67,7 +68,7 @@ class StaticMarketDataClient:
 		market: str | None = None,
 		start_at: datetime,
 		end_at: datetime,
-	) -> tuple[list[tuple[datetime, float]], str | None, list[str]]:
+	) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
 		return [], "USD", []
 
 	async def fetch_quote(
@@ -83,7 +84,7 @@ class StaticMarketDataClient:
 			Quote(
 				symbol=symbol,
 				name="Static Quote",
-				price=100.0,
+				price=Decimal("100"),
 				currency="USD",
 				market_time=datetime(2026, 3, 1, tzinfo=timezone.utc),
 			),

@@ -7,6 +7,7 @@ from fastapi import HTTPException
 
 from app.fixed_precision import (
 	DECIMAL_ZERO,
+	FixedNumber,
 	decimal_to_float,
 	display_quantity,
 	quantize_decimal,
@@ -71,7 +72,7 @@ def _projected_holding_cost_basis(state: ProjectedHoldingState) -> Decimal | Non
 		return None
 	return quantize_decimal(total_cost / quantity)
 
-def _validate_holding_quantity_for_market(quantity: Decimal | float | int, market: str) -> None:
+def _validate_holding_quantity_for_market(quantity: FixedNumber, market: str) -> None:
 	normalized_market = market.strip().upper()
 	normalized_quantity = to_decimal(quantity)
 	if (

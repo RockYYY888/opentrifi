@@ -9,6 +9,7 @@ from sqlmodel import Session, select
 
 from app.fixed_precision import (
 	DECIMAL_ZERO,
+	FixedNumber,
 	decimal_to_float,
 	display_money,
 	display_price,
@@ -41,7 +42,7 @@ def _resolve_sell_execution_price_and_currency(
 	symbol: str,
 	market: str,
 	fallback_currency: str,
-	payload_price: Decimal | float | int | None,
+	payload_price: FixedNumber | None,
 ) -> tuple[Decimal, str]:
 	resolved_price = (
 		quantize_decimal(payload_price)
