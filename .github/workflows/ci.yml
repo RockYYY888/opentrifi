@@ -51,7 +51,7 @@ jobs:
       - run: uv run python -m compileall app
       - run: uv run ruff check app tests ../scripts
       - run: uv run python ../scripts/check_backend_decimal_guard.py
-      - run: uv run python ../scripts/check_pyright_ratchet.py --baseline 601 -- app tests
+      - run: uv run python ../scripts/check_pyright_ratchet.py --baseline 597 -- app tests
       - run: uv run pytest
 
   frontend:

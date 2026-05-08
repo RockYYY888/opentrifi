@@ -4,17 +4,25 @@ import base64
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-import json
 from time import monotonic, time
 from typing import Callable, Generic, TypeVar, cast
 
 from redis import Redis
 
 from app.services.market_data_parts.common import Quote, SecuritySearchResult
+from app.typed_json import (
+	JsonValue,
+	dumps_versioned_payload,
+	expect_decoded_type,
+	expect_json_list,
+	expect_string,
+	get_type_name,
+	loads_versioned_payload,
+	typed_object,
+)
 
 CacheValue = TypeVar("CacheValue")
 CACHE_SERIALIZER_VERSION = 2
-CACHE_JSON_TYPE_KEY = "__type__"
 
 
 def _decimal_now_from_monotonic() -> Decimal:
@@ -25,32 +33,32 @@ def _decimal_now_from_wall_clock() -> Decimal:
 	return Decimal(str(time()))
 
 
-def _to_json_value(value: object) -> object:
+def _to_json_value(value: object) -> JsonValue:
 	if isinstance(value, datetime):
-		return {CACHE_JSON_TYPE_KEY: "datetime", "value": value.isoformat()}
+		return typed_object("datetime", value=value.isoformat())
 	if isinstance(value, Decimal):
-		return {CACHE_JSON_TYPE_KEY: "decimal", "value": str(value)}
+		return typed_object("decimal", value=str(value))
 	if isinstance(value, Quote):
-		return {
-			CACHE_JSON_TYPE_KEY: "Quote",
-			"symbol": value.symbol,
-			"name": value.name,
-			"price": _to_json_value(value.price),
-			"currency": value.currency,
-			"market_time": _to_json_value(value.market_time),
-		}
+		return typed_object(
+			"Quote",
+			symbol=value.symbol,
+			name=value.name,
+			price=_to_json_value(value.price),
+			currency=value.currency,
+			market_time=_to_json_value(value.market_time),
+		)
 	if isinstance(value, SecuritySearchResult):
-		return {
-			CACHE_JSON_TYPE_KEY: "SecuritySearchResult",
-			"symbol": value.symbol,
-			"name": value.name,
-			"market": value.market,
-			"currency": value.currency,
-			"exchange": value.exchange,
-			"source": value.source,
-		}
+		return typed_object(
+			"SecuritySearchResult",
+			symbol=value.symbol,
+			name=value.name,
+			market=value.market,
+			currency=value.currency,
+			exchange=value.exchange,
+			source=value.source,
+		)
 	if isinstance(value, tuple):
-		return {CACHE_JSON_TYPE_KEY: "tuple", "items": [_to_json_value(item) for item in value]}
+		return typed_object("tuple", items=[_to_json_value(item) for item in value])
 	if isinstance(value, list):
 		return [_to_json_value(item) for item in value]
 	if isinstance(value, dict):
@@ -61,37 +69,50 @@ def _to_json_value(value: object) -> object:
 	raise TypeError(f"Unsupported cache value type: {type(value).__name__}")
 
 
-def _from_json_value(value: object) -> object:
+def _from_json_value(value: JsonValue) -> object:
 	if isinstance(value, list):
 		return [_from_json_value(item) for item in value]
 	if not isinstance(value, dict):
 		return value
 
-	value_type = value.get(CACHE_JSON_TYPE_KEY)
+	value_type = get_type_name(value)
 	if value_type is None:
 		return {str(key): _from_json_value(item) for key, item in value.items()}
 	if value_type == "datetime":
-		return datetime.fromisoformat(str(value["value"]).replace("Z", "+00:00"))
+		return datetime.fromisoformat(
+			expect_string(value["value"], context="datetime.value").replace("Z", "+00:00"),
+		)
 	if value_type == "decimal":
-		return Decimal(str(value["value"]))
+		return Decimal(expect_string(value["value"], context="decimal.value"))
 	if value_type == "tuple":
-		return tuple(_from_json_value(item) for item in value["items"])  # type: ignore[index]
+		return tuple(
+			_from_json_value(item)
+			for item in expect_json_list(value["items"], context="tuple.items")
+		)
 	if value_type == "Quote":
+		price = expect_decoded_type(
+			_from_json_value(value["price"]),
+			Decimal,
+			context="Quote.price",
+		)
+		market_time = _from_json_value(value["market_time"])
+		if market_time is not None and not isinstance(market_time, datetime):
+			raise ValueError("Quote.market_time did not decode to datetime.")
 		return Quote(
-			symbol=str(value["symbol"]),
-			name=str(value["name"]),
-			price=cast(Decimal, _from_json_value(value["price"])),
-			currency=str(value["currency"]),
-			market_time=cast(datetime | None, _from_json_value(value["market_time"])),
+			symbol=expect_string(value["symbol"], context="Quote.symbol"),
+			name=expect_string(value["name"], context="Quote.name"),
+			price=price,
+			currency=expect_string(value["currency"], context="Quote.currency"),
+			market_time=market_time,
 		)
 	if value_type == "SecuritySearchResult":
 		exchange = value.get("exchange")
 		source = value.get("source")
 		return SecuritySearchResult(
-			symbol=str(value["symbol"]),
-			name=str(value["name"]),
-			market=str(value["market"]),
-			currency=str(value["currency"]),
+			symbol=expect_string(value["symbol"], context="SecuritySearchResult.symbol"),
+			name=expect_string(value["name"], context="SecuritySearchResult.name"),
+			market=expect_string(value["market"], context="SecuritySearchResult.market"),
+			currency=expect_string(value["currency"], context="SecuritySearchResult.currency"),
 			exchange=None if exchange is None else str(exchange),
 			source=None if source is None else str(source),
 		)
@@ -100,27 +121,19 @@ def _from_json_value(value: object) -> object:
 
 
 def _serialize_entry(entry: CacheEntry[object]) -> bytes:
-	payload = {
-		"version": CACHE_SERIALIZER_VERSION,
-		"expires_at": _to_json_value(entry.expires_at),
-		"value": _to_json_value(entry.value),
-	}
-	return json.dumps(
-		payload,
-		ensure_ascii=False,
-		separators=(",", ":"),
-		sort_keys=True,
-	).encode("utf-8")
+	return dumps_versioned_payload(
+		CACHE_SERIALIZER_VERSION,
+		{
+			"expires_at": _to_json_value(entry.expires_at),
+			"value": _to_json_value(entry.value),
+		},
+	)
 
 
 def _deserialize_entry(raw_value: bytes | None) -> CacheEntry[object] | None:
-	if raw_value is None:
-		return None
 	try:
-		payload = json.loads(raw_value.decode("utf-8"))
-		if not isinstance(payload, dict):
-			return None
-		if payload.get("version") != CACHE_SERIALIZER_VERSION:
+		payload = loads_versioned_payload(raw_value, CACHE_SERIALIZER_VERSION)
+		if payload is None:
 			return None
 		expires_at = _from_json_value(payload["expires_at"])
 		if not isinstance(expires_at, Decimal):
@@ -129,7 +142,7 @@ def _deserialize_entry(raw_value: bytes | None) -> CacheEntry[object] | None:
 			value=_from_json_value(payload["value"]),
 			expires_at=expires_at,
 		)
-	except (KeyError, TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+	except (KeyError, TypeError, ValueError):
 		return None
 
 

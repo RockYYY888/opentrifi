@@ -8,7 +8,7 @@ import subprocess
 import sys
 
 
-DEFAULT_BASELINE = 601
+DEFAULT_BASELINE = 597
 ERROR_COUNT_PATTERN = re.compile(r"(?P<count>\d+)\s+errors?")
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Iterator
 from datetime import date, datetime, timezone
 from decimal import Decimal
 from fnmatch import fnmatch
@@ -76,7 +77,7 @@ class InMemoryRedis:
 				deleted_count += 1
 		return deleted_count
 
-	def scan_iter(self, pattern: str):
+	def scan_iter(self, pattern: str) -> Iterator[bytes]:
 		all_keys = {
 			*self.values.keys(),
 			*self.sets.keys(),
@@ -124,12 +125,12 @@ class InMemoryRedis:
 def _empty_dashboard() -> DashboardResponse:
 	return DashboardResponse(
 		server_today=date(2026, 5, 7),
-		total_value_cny=0,
-		cash_value_cny=0,
-		holdings_value_cny=0,
-		fixed_assets_value_cny=0,
-		liabilities_value_cny=0,
-		other_assets_value_cny=0,
+		total_value_cny=Decimal("0"),
+		cash_value_cny=Decimal("0"),
+		holdings_value_cny=Decimal("0"),
+		fixed_assets_value_cny=Decimal("0"),
+		liabilities_value_cny=Decimal("0"),
+		other_assets_value_cny=Decimal("0"),
 		cash_accounts=[],
 		holdings=[],
 		fixed_assets=[],
@@ -167,35 +168,45 @@ def test_runtime_json_serializer_round_trips_runtime_state_objects() -> None:
 	redis_client = InMemoryRedis()
 	now = datetime(2026, 5, 7, 12, 0, tzinfo=timezone.utc)
 	dashboard_cache = runtime_state.RedisBackedDict[str, runtime_state.DashboardCacheEntry](
-		redis_client,  # type: ignore[arg-type]
+		redis_client,
 		f"{runtime_state.RUNTIME_KEY_PREFIX}:test-dashboard-cache",
+		key_codec=runtime_state._RUNTIME_STR_CODEC,
+		value_codec=runtime_state._RUNTIME_DASHBOARD_CACHE_CODEC,
 	)
 	login_attempts = runtime_state.RedisBackedDict[
 		tuple[str, str],
 		runtime_state.LoginAttemptState,
 	](
-		redis_client,  # type: ignore[arg-type]
+		redis_client,
 		f"{runtime_state.RUNTIME_KEY_PREFIX}:test-login-attempts",
+		key_codec=runtime_state._RUNTIME_LOGIN_ATTEMPT_KEY_CODEC,
+		value_codec=runtime_state._RUNTIME_LOGIN_ATTEMPT_CODEC,
 	)
 	live_portfolio = runtime_state.RedisBackedDict[str, runtime_state.LivePortfolioState](
-		redis_client,  # type: ignore[arg-type]
+		redis_client,
 		f"{runtime_state.RUNTIME_KEY_PREFIX}:test-live-portfolio",
+		key_codec=runtime_state._RUNTIME_STR_CODEC,
+		value_codec=runtime_state._RUNTIME_LIVE_PORTFOLIO_CODEC,
 	)
 	live_returns = runtime_state.RedisBackedDict[str, runtime_state.LiveHoldingsReturnState](
-		redis_client,  # type: ignore[arg-type]
+		redis_client,
 		f"{runtime_state.RUNTIME_KEY_PREFIX}:test-live-returns",
+		key_codec=runtime_state._RUNTIME_STR_CODEC,
+		value_codec=runtime_state._RUNTIME_LIVE_HOLDINGS_RETURN_CODEC,
 	)
-	queue = runtime_state.RedisBackedQueue(
-		redis_client,  # type: ignore[arg-type]
+	queue = runtime_state.RedisBackedQueue[str](
+		redis_client,
 		f"{runtime_state.RUNTIME_KEY_PREFIX}:test-queue",
+		value_codec=runtime_state._RUNTIME_STR_CODEC,
 	)
 	queued_users = runtime_state.RedisBackedSet(
-		redis_client,  # type: ignore[arg-type]
+		redis_client,
 		f"{runtime_state.RUNTIME_KEY_PREFIX}:test-queued-users",
 	)
 	scalar = runtime_state.RedisBackedScalar[datetime](
-		redis_client,  # type: ignore[arg-type]
+		redis_client,
 		f"{runtime_state.RUNTIME_KEY_PREFIX}:test-scalar",
+		value_codec=runtime_state._RUNTIME_DATETIME_CODEC,
 	)
 
 	dashboard_cache["tester"] = runtime_state.DashboardCacheEntry(
@@ -242,9 +253,10 @@ def test_runtime_json_serializer_round_trips_runtime_state_objects() -> None:
 
 def test_runtime_queue_async_get_uses_json_serializer() -> None:
 	redis_client = InMemoryRedis()
-	queue = runtime_state.RedisBackedQueue(
-		redis_client,  # type: ignore[arg-type]
+	queue = runtime_state.RedisBackedQueue[str](
+		redis_client,
 		f"{runtime_state.RUNTIME_KEY_PREFIX}:test-async-queue",
+		value_codec=runtime_state._RUNTIME_STR_CODEC,
 	)
 
 	queue.put_nowait("queued-user")
