@@ -53,10 +53,18 @@ import type {
 import { EMPTY_DASHBOARD, type DashboardResponse } from "./types/dashboard";
 
 const AGENT_AUDIT_BACKGROUND_REFRESH_DELAY_MS = 1500;
+const INSIGHTS_DASHBOARD_REFRESH_INTERVAL_MS = 5 * 1000;
+const DEFAULT_DASHBOARD_REFRESH_INTERVAL_MS = 60 * 1000;
 const EMPTY_AGENT_REGISTRATIONS: AgentRegistrationRecord[] = [];
 const EMPTY_AGENT_API_KEYS: AgentApiKeyRecord[] = [];
 const EMPTY_AGENT_RECORDS: AssetRecordRecord[] = [];
 const assetManagerController = createAssetManagerController(defaultAssetApiClient);
+
+type DashboardLoadOptions = {
+	initial?: boolean;
+	forceRefresh?: boolean;
+	auto?: boolean;
+};
 
 function App() {
 	const [authStatus, setAuthStatus] = useState<AuthStatus>("checking");
@@ -333,13 +341,15 @@ function App() {
 		let refreshTimer = 0;
 		const useSecondLevelRefresh = activeWorkspaceView === "insights";
 		const initialDelay = window.setTimeout(() => {
-			void loadDashboard();
+			void loadDashboard({ auto: true });
 			refreshTimer = window.setInterval(() => {
 				if (document.visibilityState !== "visible") {
 					return;
 				}
-				void loadDashboard();
-			}, useSecondLevelRefresh ? 1000 : 60 * 1000);
+				void loadDashboard({ auto: true });
+			}, useSecondLevelRefresh
+				? INSIGHTS_DASHBOARD_REFRESH_INTERVAL_MS
+				: DEFAULT_DASHBOARD_REFRESH_INTERVAL_MS);
 		}, useSecondLevelRefresh ? getMillisecondsUntilNextSecond() : getMillisecondsUntilNextMinute());
 
 		return () => {
@@ -478,13 +488,16 @@ function App() {
 	}
 
 	async function loadDashboard(
-		options: { initial?: boolean; forceRefresh?: boolean } = {},
+		options: DashboardLoadOptions = {},
 	): Promise<void> {
 		if (authStatus !== "authenticated") {
 			return;
 		}
 
 		if (dashboardRequestInFlightRef.current !== null) {
+			if (options.auto && !options.forceRefresh) {
+				return;
+			}
 			pendingDashboardRefreshRef.current = true;
 			pendingForceRefreshRef.current =
 				pendingForceRefreshRef.current || Boolean(options.forceRefresh);

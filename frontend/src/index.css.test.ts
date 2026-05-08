@@ -31,6 +31,26 @@ describe("global layout styles", () => {
 		);
 	});
 
+	it("locks the mobile page width while keeping table overflow local", () => {
+		const globalStylesheet = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
+
+		expect(globalStylesheet).toMatch(
+			/html\s*\{[\s\S]*width:\s*100%\s*;[\s\S]*max-width:\s*100%\s*;[\s\S]*overscroll-behavior-x:\s*none\s*;/,
+		);
+		expect(globalStylesheet).toMatch(
+			/body\s*\{[\s\S]*width:\s*100%\s*;[\s\S]*max-width:\s*100%\s*;[\s\S]*overflow-x:\s*clip\s*;[\s\S]*overscroll-behavior-x:\s*none\s*;/,
+		);
+		expect(globalStylesheet).toMatch(
+			/#root\s*\{[\s\S]*width:\s*100%\s*;[\s\S]*max-width:\s*100%\s*;[\s\S]*overflow-x:\s*clip\s*;/,
+		);
+		expect(globalStylesheet).toMatch(
+			/\.app-shell\s*\{[\s\S]*width:\s*100%\s*;[\s\S]*min-width:\s*0\s*;[\s\S]*overflow-x:\s*clip\s*;/,
+		);
+		expect(globalStylesheet).toMatch(
+			/\.table-scroll\s*\{[\s\S]*max-width:\s*100%\s*;[\s\S]*overflow-x:\s*auto\s*;[\s\S]*overscroll-behavior-x:\s*contain\s*;/,
+		);
+	});
+
 	it("keeps modal and viewport rules robust on mobile and keyboard navigation", () => {
 		const globalStylesheet = readFileSync(resolve(process.cwd(), "src/index.css"), "utf8");
 		const assetStylesheet = readFileSync(

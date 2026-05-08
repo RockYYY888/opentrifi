@@ -794,6 +794,38 @@ describe("App session restore", () => {
 		expect(dashboardApiMocks.getDashboard.mock.calls.length).toBeGreaterThan(callCountBeforeResume);
 	});
 
+	it("drops overlapping insight auto refresh ticks while a dashboard request is pending", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-03-24T10:00:00.000Z"));
+		const pendingDashboard = createDeferredPromise<typeof EMPTY_DASHBOARD>();
+		authApiMocks.getAuthSession.mockResolvedValue({ user_id: "alice", email: null });
+		dashboardApiMocks.getDashboard
+			.mockReturnValueOnce(pendingDashboard.promise)
+			.mockResolvedValue({ ...EMPTY_DASHBOARD });
+
+		render(<App />);
+
+		await act(async () => {
+			await flushMicrotasks();
+		});
+		expect(dashboardApiMocks.getDashboard).toHaveBeenCalledTimes(1);
+
+		await act(async () => {
+			screen.getByRole("tab", { name: "洞察" }).click();
+		});
+		await act(async () => {
+			await vi.advanceTimersByTimeAsync(11_000);
+		});
+		expect(dashboardApiMocks.getDashboard).toHaveBeenCalledTimes(1);
+
+		pendingDashboard.resolve({ ...EMPTY_DASHBOARD });
+		await act(async () => {
+			await flushMicrotasks();
+			await vi.advanceTimersByTimeAsync(5_000);
+		});
+		expect(dashboardApiMocks.getDashboard).toHaveBeenCalledTimes(2);
+	});
+
 	it("renders workspace tabs in manage insights agent order", async () => {
 		authApiMocks.getAuthSession.mockResolvedValue({ user_id: "alice", email: null });
 

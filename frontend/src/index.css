@@ -2,6 +2,9 @@
 
 html {
 	overflow-x: hidden;
+	width: 100%;
+	max-width: 100%;
+	overscroll-behavior-x: none;
 	scrollbar-gutter: stable both-edges;
 }
 
@@ -29,7 +32,7 @@ html {
 	--color-action-blue-text: #07111f;
 	--color-action-red-rgb: 255 124 145;
 	--color-action-red-end-rgb: 255 96 128;
-	--color-action-red-text: #ffd6de;
+	--color-action-red-text: rgb(255 214 222 / 0.96);
 	--action-button-font-size: 0.95rem;
 	--action-blue-background: linear-gradient(
 		135deg,
@@ -40,11 +43,12 @@ html {
 	--action-blue-shadow: 0 12px 22px rgb(var(--color-action-blue-rgb) / 0.16);
 	--action-red-background: linear-gradient(
 		135deg,
-		rgb(var(--color-action-red-rgb) / 0.2),
-		rgb(var(--color-action-red-end-rgb) / 0.16)
-	);
-	--action-red-border: rgb(var(--color-action-red-rgb) / 0.3);
-	--action-red-shadow: 0 12px 24px rgb(var(--color-action-red-rgb) / 0.16);
+		var(--trend-negative-surface),
+		var(--trend-negative-surface-soft)
+	),
+	rgba(4, 12, 24, 0.34);
+	--action-red-border: var(--trend-negative-border);
+	--action-red-shadow: none;
 	--trend-positive-rgb: var(--color-action-blue-rgb);
 	--trend-positive-accent-rgb: var(--color-action-blue-end-rgb);
 	--trend-positive-fill: rgb(var(--trend-positive-rgb) / 0.22);
@@ -88,9 +92,12 @@ html {
 body {
 	margin: 0;
 	min-width: 320px;
+	width: 100%;
+	max-width: 100%;
 	min-height: 100vh;
 	min-height: 100dvh;
-	overflow-x: hidden;
+	overflow-x: clip;
+	overscroll-behavior-x: none;
 	scrollbar-gutter: stable both-edges;
 	background: var(--bg-deep);
 }
@@ -106,6 +113,8 @@ button {
 }
 
 #root {
+	width: 100%;
+	max-width: 100%;
 	min-height: 100vh;
 	min-height: 100dvh;
 	overflow-x: clip;
@@ -113,13 +122,18 @@ button {
 
 .app-shell {
 	position: relative;
+	width: 100%;
 	max-width: 1460px;
+	min-width: 0;
 	margin: 0 auto;
 	padding: 30px 20px 72px;
+	overflow-x: clip;
 }
 
 .hero-panel,
 .panel {
+	min-width: 0;
+	max-width: 100%;
 	background: var(--bg-surface);
 	border: 1px solid var(--line-soft);
 	backdrop-filter: blur(24px);
@@ -1144,13 +1158,22 @@ button:disabled {
 }
 
 .ghost-button--danger {
-	background: rgb(var(--color-action-red-rgb) / 0.16);
+	background: var(--action-red-background);
 	border: 1px solid var(--action-red-border);
 	color: var(--color-action-red-text);
+	font-size: var(--action-button-font-size);
+	box-shadow: var(--action-red-shadow);
 }
 
 .ghost-button--danger:hover:not(:disabled) {
-	background: rgb(var(--color-action-red-rgb) / 0.24);
+	background:
+		linear-gradient(
+			135deg,
+			rgb(var(--trend-negative-rgb) / 0.24),
+			rgb(var(--trend-negative-rgb) / 0.08)
+		),
+		rgba(4, 12, 24, 0.42);
+	border-color: var(--trend-negative-border-strong);
 }
 
 .split-fields {
@@ -1246,11 +1269,17 @@ button:disabled {
 }
 
 .table-scroll {
+	width: 100%;
+	max-width: 100%;
+	min-width: 0;
 	overflow-x: auto;
+	overscroll-behavior-x: contain;
+	-webkit-overflow-scrolling: touch;
 }
 
 table {
 	width: 100%;
+	min-width: max-content;
 	border-collapse: collapse;
 }
 
@@ -1317,6 +1346,7 @@ th {
 
 	.app-shell {
 		padding: 18px 14px 48px;
+		overflow-x: clip;
 	}
 
 	.auth-shell {

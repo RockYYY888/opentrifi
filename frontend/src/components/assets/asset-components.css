@@ -810,14 +810,6 @@
 		0 0 0 1px rgba(99, 232, 255, 0.1);
 }
 
-.asset-manager__button--danger {
-	background: var(--action-red-background);
-	color: var(--color-action-red-text);
-	border: 1px solid var(--action-red-border);
-	font-size: var(--action-button-font-size);
-	box-shadow: var(--action-red-shadow);
-}
-
 .asset-manager__message {
 	padding: 0.85rem 0.95rem;
 	border-radius: 18px;
