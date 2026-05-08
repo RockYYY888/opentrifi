@@ -8,9 +8,10 @@ import {
 	getTimelineDisplayGranularity,
 	getTimelineBucketStartTimestampMs,
 } from "../../utils/portfolioAnalytics";
+import { TREND_CHART_COLORS } from "./chartTheme";
 
-export const TRADE_MARKER_POSITIVE_COLOR = "rgba(0, 155, 193, 0.92)";
-export const TRADE_MARKER_NEGATIVE_COLOR = "rgba(215, 51, 108, 0.92)";
+export const TRADE_MARKER_POSITIVE_COLOR = TREND_CHART_COLORS.positiveMarker;
+export const TRADE_MARKER_NEGATIVE_COLOR = TREND_CHART_COLORS.negativeMarker;
 export const TRADE_MARKER_FILL = "rgba(8, 18, 34, 0.96)";
 const SHANGHAI_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 
@@ -170,7 +171,7 @@ export function buildChartTradeMarkers(params: {
 	}
 
 	return [...groupedTransactions.entries()]
-		.map(([xValue, grouped]) => {
+		.map<ChartTradeMarker | null>(([xValue, grouped]) => {
 			const orderedTransactions = [...grouped].sort(compareTransactions);
 			const buyCount = orderedTransactions.filter((transaction) => transaction.side === "BUY").length;
 			const sellCount = orderedTransactions.length - buyCount;
@@ -207,7 +208,7 @@ export function buildChartTradeMarkers(params: {
 					side: transaction.side === "SELL" ? "SELL" : "BUY",
 					description: buildTradeEventDescription(transaction),
 				})),
-			} satisfies ChartTradeMarker;
+			};
 		})
 		.filter((marker): marker is ChartTradeMarker => marker !== null)
 		.sort((left, right) => left.xValue - right.xValue);

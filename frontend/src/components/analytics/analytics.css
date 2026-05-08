@@ -100,26 +100,26 @@
 
 .analytics-pill--positive {
 	background:
-		linear-gradient(135deg, rgba(0, 155, 193, 0.18), rgba(0, 155, 193, 0.06)),
+		linear-gradient(135deg, var(--trend-positive-surface), var(--trend-positive-surface-soft)),
 		rgba(4, 12, 24, 0.34);
-	border-color: rgba(0, 155, 193, 0.28);
-	color: rgba(181, 241, 255, 0.88);
+	border-color: var(--trend-positive-border);
+	color: var(--trend-positive-text);
 }
 
 .analytics-pill--positive strong {
-	color: rgba(181, 241, 255, 0.96);
+	color: var(--trend-positive-text-strong);
 }
 
 .analytics-pill--negative {
 	background:
-		linear-gradient(135deg, rgba(215, 51, 108, 0.18), rgba(215, 51, 108, 0.06)),
+		linear-gradient(135deg, var(--trend-negative-surface), var(--trend-negative-surface-soft)),
 		rgba(4, 12, 24, 0.34);
-	border-color: rgba(215, 51, 108, 0.28);
-	color: rgba(255, 196, 216, 0.88);
+	border-color: var(--trend-negative-border);
+	color: var(--trend-negative-text);
 }
 
 .analytics-pill--negative strong {
-	color: rgba(255, 196, 216, 0.96);
+	color: var(--trend-negative-text-strong);
 }
 
 .analytics-segmented {
@@ -495,18 +495,20 @@
 
 .return-trend-legend__item--positive {
 	background:
-		linear-gradient(135deg, rgba(0, 155, 193, 0.14), rgba(0, 155, 193, 0.06)),
+		linear-gradient(135deg, var(--trend-positive-surface), var(--trend-positive-surface-soft)),
 		rgba(255, 255, 255, 0.02);
-	border-color: rgba(0, 155, 193, 0.34);
-	color: rgba(181, 241, 255, 0.96);
+	border-color: var(--trend-positive-border-strong);
+	color: var(--trend-positive-text-strong);
+	font-size: var(--action-button-font-size);
 }
 
 .return-trend-legend__item--negative {
 	background:
-		linear-gradient(135deg, rgba(215, 51, 108, 0.14), rgba(215, 51, 108, 0.06)),
+		linear-gradient(135deg, var(--trend-negative-surface), var(--trend-negative-surface-soft)),
 		rgba(255, 255, 255, 0.02);
-	border-color: rgba(215, 51, 108, 0.34);
-	color: rgba(255, 196, 216, 0.96);
+	border-color: var(--trend-negative-border-strong);
+	color: var(--trend-negative-text-strong);
+	font-size: var(--action-button-font-size);
 }
 
 .analytics-legend {

@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
+import { TRADE_MARKER_POSITIVE_COLOR } from "./chartTradeMarkers";
 import { TradeMarkerScatter } from "./TradeMarkerScatter";
 
 describe("TradeMarkerScatter", () => {
@@ -13,8 +14,8 @@ describe("TradeMarkerScatter", () => {
 						yValue: 5,
 						label: "B",
 						dominantSide: "BUY",
-						stroke: "rgba(0, 155, 193, 0.92)",
-						labelColor: "rgba(0, 155, 193, 0.92)",
+						stroke: TRADE_MARKER_POSITIVE_COLOR,
+						labelColor: TRADE_MARKER_POSITIVE_COLOR,
 						fill: "rgba(8, 18, 34, 0.96)",
 						events: [],
 					},

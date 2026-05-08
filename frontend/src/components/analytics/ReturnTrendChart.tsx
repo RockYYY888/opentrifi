@@ -42,6 +42,7 @@ import {
 	type ThresholdSegmentedCoordinatePoint,
 	type ThresholdSegmentedPoint,
 } from "./chartSegmentation";
+import { TREND_CHART_COLORS } from "./chartTheme";
 import { buildChartTradeMarkers } from "./chartTradeMarkers";
 import { TradeMarkerScatter } from "./TradeMarkerScatter";
 import { TimelineRangeSelector } from "./TimelineRangeSelector";
@@ -92,8 +93,8 @@ const STEP_DELTA_LABELS: Record<TimelineRange, string> = {
 	year: "月均变动",
 };
 
-const POSITIVE_RETURN_FILL = "rgba(0, 155, 193, 0.22)";
-const NEGATIVE_RETURN_FILL = "rgba(215, 51, 108, 0.22)";
+const POSITIVE_RETURN_FILL = TREND_CHART_COLORS.positiveFill;
+const NEGATIVE_RETURN_FILL = TREND_CHART_COLORS.negativeFill;
 const RETURN_LINE_COLOR = "rgba(230, 235, 241, 0.95)";
 const ZERO_RETURN_THRESHOLD = 0;
 type ReturnTrendChartPoint = ThresholdSegmentedPoint;
@@ -503,7 +504,7 @@ export function ReturnTrendChart({
 							/>
 							<ReferenceLine
 								y={axisLayout.referenceValue}
-								stroke="rgba(0, 155, 193, 0.65)"
+								stroke={TREND_CHART_COLORS.positiveStroke}
 							/>
 							<Tooltip
 								{...chartTooltipProps}
@@ -564,8 +565,8 @@ export function ReturnTrendChart({
 																...ANALYTICS_TOOLTIP_ITEM_STYLE,
 																color:
 																	event.side === "BUY"
-																		? "rgba(181, 241, 255, 0.96)"
-																		: "rgba(255, 196, 216, 0.96)",
+																		? TREND_CHART_COLORS.positiveText
+																		: TREND_CHART_COLORS.negativeText,
 															}}
 														>
 															{event.description}

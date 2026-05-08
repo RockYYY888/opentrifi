@@ -128,7 +128,7 @@
 }
 
 .asset-manager__summary-card--liability strong {
-	color: #ffc8d3;
+	color: var(--trend-negative-text-strong);
 }
 
 .asset-manager__summary-card--other strong {
@@ -401,8 +401,8 @@
 }
 
 .asset-date-popover .rdp-selected .rdp-day_button {
-	background: linear-gradient(135deg, var(--accent-cyan), #97fff0);
-	color: #07111f;
+	background: var(--action-blue-background);
+	color: var(--color-action-blue-text);
 }
 
 .asset-date-popover .rdp-today:not(.rdp-selected) .rdp-day_button {
@@ -519,19 +519,15 @@
 	padding: 0.8rem 1rem;
 	border: 1px solid rgba(148, 224, 241, 0.24);
 	border-radius: 18px;
-	background: linear-gradient(
-		135deg,
-		rgba(99, 232, 255, 0.82),
-		rgba(122, 214, 255, 0.72)
-	);
-	color: rgba(5, 18, 34, 0.96);
-	font-size: 0.95rem;
+	background: var(--action-blue-background);
+	color: var(--color-action-blue-text);
+	font-size: var(--action-button-font-size);
 	font-weight: 700;
 	cursor: pointer;
 	transition:
 		transform 160ms ease,
 		filter 160ms ease;
-	box-shadow: 0 10px 20px rgba(77, 185, 219, 0.2);
+	box-shadow: var(--action-blue-shadow);
 }
 
 .asset-manager__button:hover:not(:disabled),
@@ -548,16 +544,18 @@
 
 .asset-manager__button--primary {
 	border: 0;
-	background: linear-gradient(135deg, var(--accent-cyan), #97fff0);
-	color: #07111f;
-	box-shadow: 0 12px 22px rgba(99, 232, 255, 0.16);
+	background: var(--action-blue-background);
+	color: var(--color-action-blue-text);
+	font-size: var(--action-button-font-size);
+	box-shadow: var(--action-blue-shadow);
 }
 
 .asset-manager__button--danger {
-	background: rgba(255, 124, 145, 0.14);
-	color: #ffc8d3;
-	border: 1px solid rgba(255, 124, 145, 0.24);
-	box-shadow: none;
+	background: var(--action-red-background);
+	color: var(--color-action-red-text);
+	border: 1px solid var(--action-red-border);
+	font-size: var(--action-button-font-size);
+	box-shadow: var(--action-red-shadow);
 }
 
 .asset-manager__modal {
@@ -747,44 +745,49 @@
 
 .asset-manager__filter-chip:hover:not(:disabled) {
 	transform: translateY(-1px);
-	border-color: rgba(99, 232, 255, 0.3);
+	border-color: rgb(var(--color-action-blue-rgb) / 0.3);
 	background:
 		linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 100%),
-		rgba(99, 232, 255, 0.11);
+		rgb(var(--color-action-blue-rgb) / 0.11);
 	box-shadow:
 		inset 0 1px 0 rgba(255, 255, 255, 0.05),
 		0 12px 24px rgba(7, 21, 40, 0.24),
-		0 0 0 1px rgba(99, 232, 255, 0.08);
+		0 0 0 1px rgb(var(--color-action-blue-rgb) / 0.08);
 }
 
 .asset-manager__filter-chip:active:not(:disabled) {
 	transform: translateY(0);
-	border-color: rgba(99, 232, 255, 0.34);
+	border-color: rgb(var(--color-action-blue-rgb) / 0.34);
 	background:
 		linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 100%),
-		rgba(99, 232, 255, 0.15);
+		rgb(var(--color-action-blue-rgb) / 0.15);
 	box-shadow:
 		inset 0 1px 0 rgba(255, 255, 255, 0.03),
-		inset 0 0 0 1px rgba(99, 232, 255, 0.1),
+		inset 0 0 0 1px rgb(var(--color-action-blue-rgb) / 0.1),
 		0 6px 14px rgba(7, 21, 40, 0.18);
 }
 
 .asset-manager__filter-chip:focus-visible {
-	outline: 2px solid rgba(99, 232, 255, 0.22);
+	outline: 2px solid rgb(var(--color-action-blue-rgb) / 0.22);
 	outline-offset: 1px;
-	border-color: rgba(99, 232, 255, 0.32);
+	border-color: rgb(var(--color-action-blue-rgb) / 0.32);
 }
 
 .asset-manager__filter-chip.is-active {
-	border-color: rgba(149, 255, 240, 0.42);
+	border-color: rgb(var(--color-action-blue-end-rgb) / 0.42);
 	background:
-		linear-gradient(135deg, rgba(99, 232, 255, 0.9), rgba(151, 255, 240, 0.92)),
+		linear-gradient(
+			135deg,
+			rgb(var(--color-action-blue-rgb) / 0.9),
+			rgb(var(--color-action-blue-end-rgb) / 0.92)
+		),
 		linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 100%);
-	color: #06111d;
+	color: var(--color-action-blue-text);
+	font-size: var(--action-button-font-size);
 	box-shadow:
 		inset 0 1px 0 rgba(255, 255, 255, 0.22),
-		0 12px 26px rgba(99, 232, 255, 0.2),
-		0 0 0 1px rgba(99, 232, 255, 0.08);
+		0 12px 26px rgb(var(--color-action-blue-rgb) / 0.2),
+		0 0 0 1px rgb(var(--color-action-blue-rgb) / 0.08);
 }
 
 .asset-manager__filter-chip.is-active:hover:not(:disabled) {
@@ -808,10 +811,11 @@
 }
 
 .asset-manager__button--danger {
-	background: linear-gradient(135deg, rgba(197, 85, 110, 0.9), rgba(168, 67, 92, 0.86));
-	color: #ffe9ef;
-	border: 1px solid rgba(255, 178, 196, 0.22);
-	box-shadow: 0 12px 24px rgba(145, 55, 78, 0.26);
+	background: var(--action-red-background);
+	color: var(--color-action-red-text);
+	border: 1px solid var(--action-red-border);
+	font-size: var(--action-button-font-size);
+	box-shadow: var(--action-red-shadow);
 }
 
 .asset-manager__message {
@@ -1133,26 +1137,26 @@
 
 .asset-records__profit-chip--positive {
 	background:
-		linear-gradient(135deg, rgba(0, 155, 193, 0.14), rgba(0, 155, 193, 0.05)),
+		linear-gradient(135deg, var(--trend-positive-surface), var(--trend-positive-surface-soft)),
 		rgba(4, 12, 24, 0.34);
-	border-color: rgba(0, 155, 193, 0.28);
+	border-color: var(--trend-positive-border);
 }
 
 .asset-records__profit-chip--positive strong,
 .asset-records__profit-chip--positive .asset-records__profit-rate {
-	color: rgba(181, 241, 255, 0.96);
+	color: var(--trend-positive-text-strong);
 }
 
 .asset-records__profit-chip--negative {
 	background:
-		linear-gradient(135deg, rgba(215, 51, 108, 0.14), rgba(215, 51, 108, 0.05)),
+		linear-gradient(135deg, var(--trend-negative-surface), var(--trend-negative-surface-soft)),
 		rgba(4, 12, 24, 0.34);
-	border-color: rgba(215, 51, 108, 0.28);
+	border-color: var(--trend-negative-border);
 }
 
 .asset-records__profit-chip--negative strong,
 .asset-records__profit-chip--negative .asset-records__profit-rate {
-	color: rgba(255, 196, 216, 0.96);
+	color: var(--trend-negative-text-strong);
 }
 
 .asset-records__profit-rate {

@@ -44,9 +44,8 @@ import {
 	type ThresholdSegmentedCoordinatePoint,
 	type ThresholdSegmentedPoint,
 } from "./chartSegmentation";
-import {
-	buildChartTradeMarkers,
-} from "./chartTradeMarkers";
+import { TREND_CHART_COLORS } from "./chartTheme";
+import { buildChartTradeMarkers } from "./chartTradeMarkers";
 import { TradeMarkerScatter } from "./TradeMarkerScatter";
 import { TimelineRangeSelector } from "./TimelineRangeSelector";
 import { useChartInteractionLock } from "./useChartInteractionLock";
@@ -146,8 +145,8 @@ const RETURN_STEP_LABELS: Record<TimelineRange, string> = {
 	year: "月均变动",
 };
 
-const POSITIVE_TREND_FILL = "rgba(0, 155, 193, 0.22)";
-const NEGATIVE_TREND_FILL = "rgba(215, 51, 108, 0.22)";
+const POSITIVE_TREND_FILL = TREND_CHART_COLORS.positiveFill;
+const NEGATIVE_TREND_FILL = TREND_CHART_COLORS.negativeFill;
 const TREND_LINE_COLOR = "rgba(230, 235, 241, 0.95)";
 const ZERO_RETURN_THRESHOLD = 0;
 
@@ -317,7 +316,7 @@ export function PortfolioTrendChart({
 					compactValueFormatter: formatCompactPercentMetric,
 					tooltipLabel: "投资类收益率",
 					referenceLabel: "基准线",
-					referenceLineStroke: "rgba(0, 155, 193, 0.65)",
+					referenceLineStroke: TREND_CHART_COLORS.positiveStroke,
 					positiveLegend: "基准线上方区域",
 					negativeLegend: "基准线下方区域",
 				};
@@ -656,8 +655,8 @@ export function PortfolioTrendChart({
 																...ANALYTICS_TOOLTIP_ITEM_STYLE,
 																color:
 																	event.side === "BUY"
-																		? "rgba(181, 241, 255, 0.96)"
-																		: "rgba(255, 196, 216, 0.96)",
+																		? TREND_CHART_COLORS.positiveText
+																		: TREND_CHART_COLORS.negativeText,
 															}}
 														>
 															{event.description}
