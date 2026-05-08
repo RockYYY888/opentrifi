@@ -3,6 +3,7 @@ from collections.abc import Iterator
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import threading
+from typing import Any
 
 import pytest
 from fastapi import HTTPException
@@ -97,6 +98,14 @@ from app.services import (
 	service_context,
 )
 import app.services.realtime_analytics_service as realtime_analytics_service
+
+
+def D(value: str | int | float) -> Decimal:
+	return Decimal(str(value))
+
+
+def sql_expr(value: object) -> Any:
+	return value
 
 
 class _InMemoryRedisLock:
@@ -251,7 +260,7 @@ def test_create_account_persists_account_type_and_note(session: Session) -> None
 			name="Emergency Fund",
 			platform="Alipay",
 			currency="cny",
-			balance=1280.5,
+			balance=D("1280.5"),
 			account_type="alipay",
 			started_on=date(2026, 3, 1),
 			note="  spare cash  ",
@@ -281,7 +290,7 @@ def test_update_account_keeps_new_fields_when_omitted_from_payload(session: Sess
 			name="Wallet",
 			platform="Cash",
 			currency="cny",
-			balance=50,
+			balance=D("50"),
 			account_type="cash",
 			note="Daily spending",
 		),
@@ -295,7 +304,7 @@ def test_update_account_keeps_new_fields_when_omitted_from_payload(session: Sess
 			name="Pocket Wallet",
 			platform="Cash",
 			currency="usd",
-			balance=66.5,
+			balance=D("66.5"),
 		),
 		current_user,
 		session,
@@ -315,7 +324,7 @@ def test_delete_account_removes_record(session: Session) -> None:
 			name="Checking",
 			platform="Bank",
 			currency="cny",
-			balance=800,
+			balance=D("800"),
 			account_type="bank",
 		),
 		current_user,
@@ -337,7 +346,7 @@ def test_delete_account_cascades_related_cash_transfers_and_rebalances_other_acc
 			name="主账户",
 			platform="Bank",
 			currency="cny",
-			balance=500,
+			balance=D("500"),
 			account_type="bank",
 		),
 		current_user,
@@ -348,7 +357,7 @@ def test_delete_account_cascades_related_cash_transfers_and_rebalances_other_acc
 			name="备用金",
 			platform="Cash",
 			currency="cny",
-			balance=200,
+			balance=D("200"),
 			account_type="cash",
 		),
 		current_user,
@@ -358,7 +367,7 @@ def test_delete_account_cascades_related_cash_transfers_and_rebalances_other_acc
 		CashTransferCreate(
 			from_account_id=source_account.id or 0,
 			to_account_id=target_account.id or 0,
-			source_amount=100,
+			source_amount=D("100"),
 			transferred_on=date(2026, 3, 2),
 			note="首次划转",
 		),
@@ -377,7 +386,7 @@ def test_delete_account_cascades_related_cash_transfers_and_rebalances_other_acc
 	assert refreshed_target_account.balance == 200.0
 	assert session.exec(select(CashTransfer)).all() == []
 	assert session.exec(
-		select(CashLedgerEntry).where(CashLedgerEntry.cash_transfer_id.is_not(None)),
+		select(CashLedgerEntry).where(sql_expr(CashLedgerEntry.cash_transfer_id).is_not(None)),
 	).all() == []
 
 
@@ -390,7 +399,7 @@ def test_delete_account_cascades_holding_cash_settlement_but_keeps_trade_record(
 			name="主账户",
 			platform="Bank",
 			currency="cny",
-			balance=1000,
+			balance=D("1000"),
 			account_type="bank",
 		),
 		current_user,
@@ -402,8 +411,8 @@ def test_delete_account_cascades_holding_cash_settlement_but_keeps_trade_record(
 			side="BUY",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=100,
+			quantity=D("1"),
+			price=D("100"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -435,7 +444,7 @@ def test_delete_holding_transaction_cleans_stale_cash_settlement_without_blockin
 			name="主账户",
 			platform="Bank",
 			currency="cny",
-			balance=1000,
+			balance=D("1000"),
 			account_type="bank",
 		),
 		current_user,
@@ -447,8 +456,8 @@ def test_delete_holding_transaction_cleans_stale_cash_settlement_without_blockin
 			side="BUY",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=100,
+			quantity=D("1"),
+			price=D("100"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -673,14 +682,14 @@ def test_persist_hour_snapshot_compacts_rows_within_the_same_hour(session: Sessi
 	session.add(
 		PortfolioSnapshot(
 			user_id="tester",
-			total_value_cny=1000,
+			total_value_cny=D("1000"),
 			created_at=datetime(2026, 3, 1, 3, 12, tzinfo=timezone.utc),
 		),
 	)
 	session.add(
 		PortfolioSnapshot(
 			user_id="tester",
-			total_value_cny=1200,
+			total_value_cny=D("1200"),
 			created_at=datetime(2026, 3, 1, 3, 41, tzinfo=timezone.utc),
 		),
 	)
@@ -690,11 +699,11 @@ def test_persist_hour_snapshot_compacts_rows_within_the_same_hour(session: Sessi
 		session,
 		"tester",
 		datetime(2026, 3, 1, 3, 0, tzinfo=timezone.utc),
-		1500,
+		D("1500"),
 	)
 
 	snapshots = session.exec(
-		select(PortfolioSnapshot).order_by(PortfolioSnapshot.created_at.asc()),
+		select(PortfolioSnapshot).order_by(sql_expr(PortfolioSnapshot.created_at).asc()),
 	).all()
 
 	assert len(snapshots) == 1
@@ -718,7 +727,7 @@ def test_persist_holdings_return_snapshot_compacts_rows_within_the_same_hour(
 			scope="TOTAL",
 			symbol=None,
 			name="非现金资产",
-			return_pct=1.5,
+			return_pct=D("1.5"),
 			created_at=datetime(2026, 3, 1, 3, 12, tzinfo=timezone.utc),
 		),
 	)
@@ -728,7 +737,7 @@ def test_persist_holdings_return_snapshot_compacts_rows_within_the_same_hour(
 			scope="HOLDING",
 			symbol="0700.HK",
 			name="腾讯控股",
-			return_pct=2.2,
+			return_pct=D("2.2"),
 			created_at=datetime(2026, 3, 1, 3, 16, tzinfo=timezone.utc),
 		),
 	)
@@ -738,12 +747,12 @@ def test_persist_holdings_return_snapshot_compacts_rows_within_the_same_hour(
 		session,
 		"tester",
 		datetime(2026, 3, 1, 3, 0, tzinfo=timezone.utc),
-		3.5,
-		(LiveHoldingReturnPoint(symbol="0700.HK", name="腾讯控股", return_pct=4.25),),
+		D("3.5"),
+		(LiveHoldingReturnPoint(symbol="0700.HK", name="腾讯控股", return_pct=D("4.25")),),
 	)
 
 	snapshots = session.exec(
-		select(HoldingPerformanceSnapshot).order_by(HoldingPerformanceSnapshot.scope.asc()),
+		select(HoldingPerformanceSnapshot).order_by(sql_expr(HoldingPerformanceSnapshot.scope).asc()),
 	).all()
 
 	assert len(snapshots) == 2
@@ -760,29 +769,29 @@ def test_summarize_holdings_return_state_returns_weighted_aggregate() -> None:
 				id=1,
 				symbol="0700.HK",
 				name="腾讯控股",
-				quantity=100,
+				quantity=D("100"),
 				fallback_currency="HKD",
-				cost_basis_price=500,
+				cost_basis_price=D("500"),
 				market="HK",
-				price=550,
+				price=D("550"),
 				price_currency="HKD",
-				fx_to_cny=0.8,
-				value_cny=44000,
-				return_pct=10.0,
+				fx_to_cny=D("0.8"),
+				value_cny=D("44000"),
+				return_pct=D("10.0"),
 			),
 			ValuedHolding(
 				id=2,
 				symbol="9988.HK",
 				name="阿里巴巴-W",
-				quantity=200,
+				quantity=D("200"),
 				fallback_currency="HKD",
-				cost_basis_price=100,
+				cost_basis_price=D("100"),
 				market="HK",
-				price=90,
+				price=D("90"),
 				price_currency="HKD",
-				fx_to_cny=0.8,
-				value_cny=14400,
-				return_pct=-10.0,
+				fx_to_cny=D("0.8"),
+				value_cny=D("14400"),
+				return_pct=D("-10.0"),
 			),
 		],
 	)
@@ -801,7 +810,7 @@ def test_list_accounts_returns_valued_balances(
 			name="Checking",
 			platform="Bank",
 			currency="usd",
-			balance=100,
+			balance=D("100"),
 			account_type="bank",
 		),
 		current_user,
@@ -827,7 +836,7 @@ def test_list_accounts_scopes_results_to_current_user(
 			name="Checking",
 			platform="Bank",
 			currency="cny",
-			balance=50,
+			balance=D("50"),
 			account_type="bank",
 		),
 		first_user,
@@ -846,7 +855,7 @@ def test_cash_account_schema_rejects_invalid_account_type() -> None:
 			name="Wallet",
 			platform="Cash",
 			currency="CNY",
-			balance=10,
+			balance=D("10"),
 			account_type="BROKERAGE",
 		)
 
@@ -860,7 +869,7 @@ def test_holding_transaction_buy_rejects_sell_proceeds_fields() -> None:
 			side="BUY",
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="USD",
 			market="US",
 			traded_on=date(2026, 3, 1),
@@ -877,7 +886,7 @@ def test_holding_transaction_sell_requires_target_account_for_existing_cash_stra
 			side="SELL",
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="USD",
 			market="US",
 			traded_on=date(2026, 3, 1),
@@ -891,9 +900,9 @@ def test_create_holding_persists_market_broker_and_note(session: Session) -> Non
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=3,
+			quantity=D("3"),
 			fallback_currency="usd",
-			cost_basis_price=92.5,
+			cost_basis_price=D("92.5"),
 			market="us",
 			broker="  IBKR  ",
 			started_on=date(2026, 2, 14),
@@ -928,9 +937,9 @@ def test_create_holding_bootstraps_buy_transaction_baseline(session: Session) ->
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=88,
+			cost_basis_price=D("88"),
 			market="us",
 			started_on=date(2026, 2, 14),
 		),
@@ -957,9 +966,9 @@ def test_holding_transaction_buy_and_sell_rebuilds_position_from_lots(session: S
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 2, 14),
 		),
@@ -972,8 +981,8 @@ def test_holding_transaction_buy_and_sell_rebuilds_position_from_lots(session: S
 			side="BUY",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=100,
+			quantity=D("1"),
+			price=D("100"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 2, 1),
@@ -991,8 +1000,8 @@ def test_holding_transaction_buy_and_sell_rebuilds_position_from_lots(session: S
 			side="SELL",
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
-			price=120,
+			quantity=D("2"),
+			price=D("120"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 2, 20),
@@ -1020,9 +1029,9 @@ def test_holding_sell_transaction_auto_creates_cash_entry_with_source(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 2, 14),
 		),
@@ -1035,7 +1044,7 @@ def test_holding_sell_transaction_auto_creates_cash_entry_with_source(
 			side="SELL",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			price=None,
 			fallback_currency="usd",
 			market="us",
@@ -1054,7 +1063,7 @@ def test_holding_sell_transaction_auto_creates_cash_entry_with_source(
 		session.exec(
 			select(CashAccount)
 			.where(CashAccount.user_id == current_user.username)
-			.order_by(CashAccount.created_at.asc()),
+			.order_by(sql_expr(CashAccount.created_at).asc()),
 		),
 	)
 	assert len(cash_entries) == 1
@@ -1076,9 +1085,9 @@ def test_holding_sell_transaction_keeps_user_supplied_execution_price(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 2, 14),
 		),
@@ -1091,8 +1100,8 @@ def test_holding_sell_transaction_keeps_user_supplied_execution_price(
 			side="SELL",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=12,
+			quantity=D("1"),
+			price=D("12"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -1108,7 +1117,7 @@ def test_holding_sell_transaction_keeps_user_supplied_execution_price(
 		session.exec(
 			select(CashAccount)
 			.where(CashAccount.user_id == current_user.username)
-			.order_by(CashAccount.created_at.asc()),
+			.order_by(sql_expr(CashAccount.created_at).asc()),
 		),
 	)
 	assert len(cash_entries) == 1
@@ -1125,9 +1134,9 @@ def test_holding_sell_transaction_can_discard_proceeds(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 2, 14),
 		),
@@ -1140,8 +1149,8 @@ def test_holding_sell_transaction_can_discard_proceeds(
 			side="SELL",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=50,
+			quantity=D("1"),
+			price=D("50"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -1171,9 +1180,9 @@ def test_holding_sell_transaction_can_merge_proceeds_into_existing_cash_account(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 2, 14),
 		),
@@ -1185,7 +1194,7 @@ def test_holding_sell_transaction_can_merge_proceeds_into_existing_cash_account(
 			name="主账户",
 			platform="Bank",
 			currency="cny",
-			balance=200,
+			balance=D("200"),
 			account_type="bank",
 			note="长期备用金",
 		),
@@ -1198,8 +1207,8 @@ def test_holding_sell_transaction_can_merge_proceeds_into_existing_cash_account(
 			side="SELL",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=88,
+			quantity=D("1"),
+			price=D("88"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -1236,7 +1245,7 @@ def test_holding_buy_transaction_can_deduct_from_existing_cash_account(
 			name="主账户",
 			platform="Bank",
 			currency="cny",
-			balance=1000,
+			balance=D("1000"),
 			account_type="bank",
 		),
 		current_user,
@@ -1248,8 +1257,8 @@ def test_holding_buy_transaction_can_deduct_from_existing_cash_account(
 			side="BUY",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=100,
+			quantity=D("1"),
+			price=D("100"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -1285,9 +1294,9 @@ def test_holding_transaction_sell_rejects_when_quantity_is_insufficient(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 		),
 		current_user,
@@ -1300,8 +1309,8 @@ def test_holding_transaction_sell_rejects_when_quantity_is_insufficient(
 				side="SELL",
 				symbol="aapl",
 				name="Apple",
-				quantity=2,
-				price=120,
+				quantity=D("2"),
+				price=D("120"),
 				fallback_currency="usd",
 				market="us",
 				traded_on=date(2026, 3, 1),
@@ -1320,9 +1329,9 @@ def test_delete_holding_transaction_reconciles_holding_projection(session: Sessi
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 		),
 		current_user,
@@ -1333,8 +1342,8 @@ def test_delete_holding_transaction_reconciles_holding_projection(session: Sessi
 			side="BUY",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=120,
+			quantity=D("1"),
+			price=D("120"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -1372,9 +1381,9 @@ def test_delete_sell_transaction_reverses_existing_cash_settlement(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 2, 14),
 		),
@@ -1386,7 +1395,7 @@ def test_delete_sell_transaction_reverses_existing_cash_settlement(
 			name="主账户",
 			platform="Bank",
 			currency="cny",
-			balance=200,
+			balance=D("200"),
 			account_type="bank",
 		),
 		current_user,
@@ -1397,8 +1406,8 @@ def test_delete_sell_transaction_reverses_existing_cash_settlement(
 			side="SELL",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=88,
+			quantity=D("1"),
+			price=D("88"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -1431,9 +1440,9 @@ def test_update_holding_transaction_rebuilds_projection_and_cash_settlement(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 2, 14),
 		),
@@ -1445,7 +1454,7 @@ def test_update_holding_transaction_rebuilds_projection_and_cash_settlement(
 			name="主账户",
 			platform="Bank",
 			currency="cny",
-			balance=200,
+			balance=D("200"),
 			account_type="bank",
 		),
 		current_user,
@@ -1456,8 +1465,8 @@ def test_update_holding_transaction_rebuilds_projection_and_cash_settlement(
 			side="SELL",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=88,
+			quantity=D("1"),
+			price=D("88"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -1471,7 +1480,7 @@ def test_update_holding_transaction_rebuilds_projection_and_cash_settlement(
 	updated = update_holding_transaction(
 		applied_sell.transaction.id,
 		SecurityHoldingTransactionUpdate(
-			quantity=2,
+			quantity=D("2"),
 			traded_on=date(2026, 2, 20),
 			note="sold all",
 		),
@@ -1506,7 +1515,7 @@ def test_create_cash_transfer_records_ledger_and_updates_balances(
 			name="主账户",
 			platform="Bank",
 			currency="cny",
-			balance=1000,
+			balance=D("1000"),
 			account_type="bank",
 		),
 		current_user,
@@ -1517,7 +1526,7 @@ def test_create_cash_transfer_records_ledger_and_updates_balances(
 			name="备用金",
 			platform="Cash",
 			currency="cny",
-			balance=200,
+			balance=D("200"),
 			account_type="cash",
 		),
 		current_user,
@@ -1528,7 +1537,7 @@ def test_create_cash_transfer_records_ledger_and_updates_balances(
 		CashTransferCreate(
 			from_account_id=from_account.id or 0,
 			to_account_id=to_account.id or 0,
-			source_amount=300,
+			source_amount=D("300"),
 			transferred_on=date(2026, 3, 2),
 			note="周转",
 		),
@@ -1561,7 +1570,7 @@ def test_create_cash_transfer_converts_supported_source_currency_into_cny_target
 			name="美元账户",
 			platform="Bank",
 			currency="usd",
-			balance=100,
+			balance=D("100"),
 			account_type="bank",
 		),
 		current_user,
@@ -1572,7 +1581,7 @@ def test_create_cash_transfer_converts_supported_source_currency_into_cny_target
 			name="人民币账户",
 			platform="Cash",
 			currency="cny",
-			balance=20,
+			balance=D("20"),
 			account_type="cash",
 		),
 		current_user,
@@ -1583,7 +1592,7 @@ def test_create_cash_transfer_converts_supported_source_currency_into_cny_target
 		CashTransferCreate(
 			from_account_id=from_account.id or 0,
 			to_account_id=to_account.id or 0,
-			source_amount=10,
+			source_amount=D("10"),
 			transferred_on=date(2026, 3, 2),
 		),
 		current_user,
@@ -1608,7 +1617,7 @@ def test_create_cash_transfer_rejects_non_cny_target_or_manual_target_override(
 			name="港币账户",
 			platform="Bank",
 			currency="hkd",
-			balance=100,
+			balance=D("100"),
 			account_type="bank",
 		),
 		current_user,
@@ -1619,7 +1628,7 @@ def test_create_cash_transfer_rejects_non_cny_target_or_manual_target_override(
 			name="美元账户",
 			platform="Cash",
 			currency="usd",
-			balance=10,
+			balance=D("10"),
 			account_type="cash",
 		),
 		current_user,
@@ -1630,7 +1639,7 @@ def test_create_cash_transfer_rejects_non_cny_target_or_manual_target_override(
 			name="人民币账户",
 			platform="Cash",
 			currency="cny",
-			balance=0,
+			balance=D("0"),
 			account_type="cash",
 		),
 		current_user,
@@ -1642,7 +1651,7 @@ def test_create_cash_transfer_rejects_non_cny_target_or_manual_target_override(
 			CashTransferCreate(
 				from_account_id=from_account.id or 0,
 				to_account_id=usd_target.id or 0,
-				source_amount=5,
+				source_amount=D("5"),
 				transferred_on=date(2026, 3, 2),
 			),
 			current_user,
@@ -1657,8 +1666,8 @@ def test_create_cash_transfer_rejects_non_cny_target_or_manual_target_override(
 			CashTransferCreate(
 				from_account_id=from_account.id or 0,
 				to_account_id=cny_target.id or 0,
-				source_amount=5,
-				target_amount=1,
+				source_amount=D("5"),
+				target_amount=D("1"),
 				transferred_on=date(2026, 3, 2),
 			),
 			current_user,
@@ -1676,7 +1685,7 @@ def test_update_cash_transfer_replays_ledger_and_account_balances(session: Sessi
 			name="主账户",
 			platform="Bank",
 			currency="CNY",
-			balance=500,
+			balance=D("500"),
 			account_type="BANK",
 		),
 		current_user,
@@ -1687,7 +1696,7 @@ def test_update_cash_transfer_replays_ledger_and_account_balances(session: Sessi
 			name="备用金",
 			platform="Cash",
 			currency="CNY",
-			balance=200,
+			balance=D("200"),
 			account_type="CASH",
 		),
 		current_user,
@@ -1697,7 +1706,7 @@ def test_update_cash_transfer_replays_ledger_and_account_balances(session: Sessi
 		CashTransferCreate(
 			from_account_id=from_account.id or 0,
 			to_account_id=to_account.id or 0,
-			source_amount=100,
+			source_amount=D("100"),
 			transferred_on=date(2026, 3, 2),
 			note="首次划转",
 		),
@@ -1708,7 +1717,7 @@ def test_update_cash_transfer_replays_ledger_and_account_balances(session: Sessi
 	updated_transfer = update_cash_transfer(
 		created_transfer.transfer.id,
 		CashTransferUpdate(
-			source_amount=40,
+			source_amount=D("40"),
 			transferred_on=date(2026, 3, 3),
 			note="修正金额",
 		),
@@ -1726,7 +1735,7 @@ def test_update_cash_transfer_replays_ledger_and_account_balances(session: Sessi
 		session.exec(
 			select(CashLedgerEntry)
 			.where(CashLedgerEntry.cash_transfer_id == created_transfer.transfer.id)
-			.order_by(CashLedgerEntry.amount.asc()),
+			.order_by(sql_expr(CashLedgerEntry.amount).asc()),
 		),
 	)
 	assert len(stored_ledger_entries) == 2
@@ -1743,7 +1752,7 @@ def test_manual_cash_ledger_adjustment_create_update_delete_reconciles_balance(
 			name="主账户",
 			platform="Bank",
 			currency="CNY",
-			balance=100,
+			balance=D("100"),
 			account_type="BANK",
 		),
 		current_user,
@@ -1753,7 +1762,7 @@ def test_manual_cash_ledger_adjustment_create_update_delete_reconciles_balance(
 	created_adjustment = create_cash_ledger_adjustment(
 		CashLedgerAdjustmentCreate(
 			cash_account_id=account.id or 0,
-			amount=25,
+			amount=D("25"),
 			happened_on=date(2026, 3, 4),
 			note="补记入账",
 		),
@@ -1766,7 +1775,7 @@ def test_manual_cash_ledger_adjustment_create_update_delete_reconciles_balance(
 	updated_adjustment = update_cash_ledger_adjustment(
 		created_adjustment.entry.id,
 		CashLedgerAdjustmentUpdate(
-			amount=-10,
+			amount=D("-10"),
 			note="修正差额",
 		),
 		current_user,
@@ -1798,7 +1807,7 @@ def test_build_dashboard_replays_total_series_from_cash_ledger_and_holding_trans
 			name="主账户",
 			platform="Bank",
 			currency="CNY",
-			balance=1000,
+			balance=D("1000"),
 			account_type="BANK",
 		),
 		current_user,
@@ -1809,8 +1818,8 @@ def test_build_dashboard_replays_total_series_from_cash_ledger_and_holding_trans
 			side="BUY",
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
-			price=100,
+			quantity=D("1"),
+			price=D("100"),
 			fallback_currency="USD",
 			market="US",
 			traded_on=date(2026, 3, 1),
@@ -1845,7 +1854,7 @@ def test_build_dashboard_persists_previous_live_hour_snapshot_when_hour_rolls(
 			name="主账户",
 			platform="Bank",
 			currency="CNY",
-			balance=100.0,
+			balance=D("100.0"),
 			account_type="BANK",
 		),
 	)
@@ -1860,7 +1869,7 @@ def test_build_dashboard_persists_previous_live_hour_snapshot_when_hour_rolls(
 		session.exec(
 			select(PortfolioSnapshot)
 			.where(PortfolioSnapshot.user_id == current_user.username)
-			.order_by(PortfolioSnapshot.created_at.asc()),
+			.order_by(sql_expr(PortfolioSnapshot.created_at).asc()),
 		),
 	)
 
@@ -1873,7 +1882,7 @@ def test_build_dashboard_persists_previous_live_hour_snapshot_when_hour_rolls(
 		session.exec(
 			select(PortfolioSnapshot)
 			.where(PortfolioSnapshot.user_id == current_user.username)
-			.order_by(PortfolioSnapshot.created_at.asc()),
+			.order_by(sql_expr(PortfolioSnapshot.created_at).asc()),
 		),
 	)
 
@@ -1898,7 +1907,7 @@ def test_realtime_sampler_populates_second_and_minute_dashboard_series(
 			name="主账户",
 			platform="Bank",
 			currency="CNY",
-			balance=1000,
+			balance=D("1000"),
 			account_type="BANK",
 		),
 		current_user,
@@ -1909,8 +1918,8 @@ def test_realtime_sampler_populates_second_and_minute_dashboard_series(
 			side="BUY",
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
-			price=100,
+			quantity=D("1"),
+			price=D("100"),
 			fallback_currency="USD",
 			market="US",
 			traded_on=date(2026, 3, 26),
@@ -1940,14 +1949,14 @@ def test_realtime_sampler_populates_second_and_minute_dashboard_series(
 		session.exec(
 			select(RealtimePortfolioSnapshot)
 			.where(RealtimePortfolioSnapshot.user_id == current_user.username)
-			.order_by(RealtimePortfolioSnapshot.created_at.asc()),
+			.order_by(sql_expr(RealtimePortfolioSnapshot.created_at).asc()),
 		),
 	)
 	return_rows = list(
 		session.exec(
 			select(RealtimeHoldingPerformanceSnapshot)
 			.where(RealtimeHoldingPerformanceSnapshot.user_id == current_user.username)
-			.order_by(RealtimeHoldingPerformanceSnapshot.created_at.asc()),
+			.order_by(sql_expr(RealtimeHoldingPerformanceSnapshot.created_at).asc()),
 		),
 	)
 	assert len(portfolio_rows) == 2
@@ -2034,7 +2043,7 @@ def test_realtime_sampler_samples_all_users_with_one_quote_fetch_per_unique_symb
 			name="主账户 A",
 			platform="Bank",
 			currency="CNY",
-			balance=1000,
+			balance=D("1000"),
 			account_type="BANK",
 		),
 		first_user,
@@ -2045,7 +2054,7 @@ def test_realtime_sampler_samples_all_users_with_one_quote_fetch_per_unique_symb
 			name="主账户 B",
 			platform="Bank",
 			currency="CNY",
-			balance=1000,
+			balance=D("1000"),
 			account_type="BANK",
 		),
 		second_user,
@@ -2060,8 +2069,8 @@ def test_realtime_sampler_samples_all_users_with_one_quote_fetch_per_unique_symb
 				side="BUY",
 				symbol="AAPL",
 				name="Apple",
-				quantity=1,
-				price=100,
+				quantity=D("1"),
+				price=D("100"),
 				fallback_currency="USD",
 				market="US",
 				traded_on=date(2026, 3, 26),
@@ -2087,7 +2096,7 @@ def test_realtime_sampler_samples_all_users_with_one_quote_fetch_per_unique_symb
 	portfolio_user_ids = {
 		row.user_id
 		for row in session.exec(
-			select(RealtimePortfolioSnapshot).order_by(RealtimePortfolioSnapshot.user_id.asc()),
+			select(RealtimePortfolioSnapshot).order_by(sql_expr(RealtimePortfolioSnapshot.user_id).asc()),
 		)
 	}
 	assert portfolio_user_ids == {first_user.username, second_user.username}
@@ -2135,7 +2144,7 @@ def test_realtime_sampler_records_market_data_failures_without_dropping_cash_sna
 			name="主账户",
 			platform="Bank",
 			currency="CNY",
-			balance=1000,
+			balance=D("1000"),
 			account_type="BANK",
 		),
 		current_user,
@@ -2145,9 +2154,9 @@ def test_realtime_sampler_records_market_data_failures_without_dropping_cash_sna
 		SecurityHoldingCreate(
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="USD",
-			cost_basis_price=100,
+			cost_basis_price=D("100"),
 			market="US",
 			started_on=date(2026, 3, 26),
 		),
@@ -2265,7 +2274,7 @@ def test_create_holding_rejects_future_started_on_based_on_server_date(
 			SecurityHoldingCreate(
 				symbol="aapl",
 				name="Apple",
-				quantity=2,
+				quantity=D("2"),
 				fallback_currency="usd",
 				market="us",
 				started_on=future_started_on,
@@ -2290,8 +2299,8 @@ def test_create_holding_transaction_rejects_future_traded_on_based_on_server_dat
 				side="BUY",
 				symbol="aapl",
 				name="Apple",
-				quantity=1,
-				price=100,
+				quantity=D("1"),
+				price=D("100"),
 				fallback_currency="usd",
 				market="us",
 				traded_on=future_traded_on,
@@ -2312,7 +2321,7 @@ def test_update_holding_rebases_earliest_transaction_for_backdated_holding_corre
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
 			market="us",
 			broker="IBKR",
@@ -2327,8 +2336,8 @@ def test_update_holding_rebases_earliest_transaction_for_backdated_holding_corre
 			side="BUY",
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
-			price=100,
+			quantity=D("1"),
+			price=D("100"),
 			fallback_currency="USD",
 			market="US",
 			broker="IBKR",
@@ -2342,8 +2351,8 @@ def test_update_holding_rebases_earliest_transaction_for_backdated_holding_corre
 	updated_holding = update_holding(
 		holding.id or 0,
 		SecurityHoldingUpdate(
-			quantity=4,
-			cost_basis_price=118,
+			quantity=D("4"),
+			cost_basis_price=D("118"),
 			started_on=date(2026, 2, 10),
 		),
 		current_user,
@@ -2378,8 +2387,8 @@ def test_update_holding_rebases_earliest_transaction_for_backdated_holding_corre
 
 def test_update_holding_accepts_holding_correction_fields() -> None:
 	payload = SecurityHoldingUpdate(
-		quantity=4,
-		cost_basis_price=118,
+		quantity=D("4"),
+		cost_basis_price=D("118"),
 		started_on=date(2026, 2, 10),
 	)
 
@@ -2394,7 +2403,7 @@ def test_delete_holding_removes_record(session: Session) -> None:
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
 			market="us",
 		),
@@ -2419,9 +2428,9 @@ def test_delete_holding_reverses_linked_sell_cash_settlements(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 2, 14),
 		),
@@ -2433,7 +2442,7 @@ def test_delete_holding_reverses_linked_sell_cash_settlements(
 			name="主账户",
 			platform="Bank",
 			currency="cny",
-			balance=200,
+			balance=D("200"),
 			account_type="bank",
 		),
 		current_user,
@@ -2444,8 +2453,8 @@ def test_delete_holding_reverses_linked_sell_cash_settlements(
 			side="SELL",
 			symbol="aapl",
 			name="Apple",
-			quantity=1,
-			price=88,
+			quantity=D("1"),
+			price=D("88"),
 			fallback_currency="usd",
 			market="us",
 			traded_on=date(2026, 3, 1),
@@ -2485,9 +2494,9 @@ def test_list_holdings_returns_enriched_quote_fields(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 		),
 		current_user,
@@ -2516,9 +2525,9 @@ def test_create_holding_returns_enriched_quote_fields_immediately(
 		SecurityHoldingCreate(
 			symbol="aapl",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 		),
 		current_user,
@@ -2536,7 +2545,7 @@ def test_holding_schema_rejects_invalid_market() -> None:
 		SecurityHoldingCreate(
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="USD",
 			market="JP",
 		)
@@ -2547,7 +2556,7 @@ def test_holding_schema_rejects_fractional_stock_quantity() -> None:
 		SecurityHoldingCreate(
 			symbol="AAPL",
 			name="Apple",
-			quantity=1.5,
+			quantity=D("1.5"),
 			fallback_currency="USD",
 			market="US",
 		)
@@ -2557,7 +2566,7 @@ def test_holding_schema_allows_fractional_fund_units() -> None:
 	holding = SecurityHoldingCreate(
 		symbol="159915.SZ",
 		name="创业板 ETF",
-		quantity=1.5,
+		quantity=D("1.5"),
 		fallback_currency="CNY",
 		market="FUND",
 	)
@@ -2569,7 +2578,7 @@ def test_holding_schema_allows_fractional_crypto_units() -> None:
 	holding = SecurityHoldingCreate(
 		symbol="BTC-USD",
 		name="Bitcoin",
-		quantity=0.25,
+		quantity=D("0.25"),
 		fallback_currency="USD",
 		market="CRYPTO",
 	)
@@ -2584,8 +2593,8 @@ def test_create_new_asset_categories_persists_records(session: Session) -> None:
 		FixedAssetCreate(
 			name="Primary Home",
 			category="real_estate",
-			current_value_cny=2_000_000,
-			purchase_value_cny=1_800_000,
+			current_value_cny=D("2000000"),
+			purchase_value_cny=D("1800000"),
 			started_on=date(2024, 1, 1),
 			note="  family use  ",
 		),
@@ -2597,7 +2606,7 @@ def test_create_new_asset_categories_persists_records(session: Session) -> None:
 			name="Mortgage",
 			category="mortgage",
 			currency="cny",
-			balance=500_000,
+			balance=D("500000"),
 			started_on=date(2024, 1, 2),
 			note="  monthly repayment  ",
 		),
@@ -2608,8 +2617,8 @@ def test_create_new_asset_categories_persists_records(session: Session) -> None:
 		OtherAssetCreate(
 			name="Friend Loan",
 			category="receivable",
-			current_value_cny=20_000,
-			original_value_cny=18_000,
+			current_value_cny=D("20000"),
+			original_value_cny=D("18000"),
 			started_on=date(2025, 5, 6),
 			note="  due next quarter  ",
 		),
@@ -2637,7 +2646,7 @@ def test_asset_currency_schemas_restrict_supported_currencies() -> None:
 			name="JPY Account",
 			platform="Bank",
 			currency="jpy",
-			balance=100,
+			balance=D("100"),
 			account_type="bank",
 		)
 
@@ -2646,8 +2655,8 @@ def test_asset_currency_schemas_restrict_supported_currencies() -> None:
 			side="BUY",
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
-			price=100,
+			quantity=D("1"),
+			price=D("100"),
 			fallback_currency="eur",
 			market="US",
 			traded_on=date(2026, 3, 1),
@@ -2658,7 +2667,7 @@ def test_asset_currency_schemas_restrict_supported_currencies() -> None:
 			name="Mortgage",
 			category="mortgage",
 			currency="jpy",
-			balance=500_000,
+			balance=D("500000"),
 		)
 
 
@@ -2672,7 +2681,7 @@ def test_build_dashboard_subtracts_liabilities_from_total(
 			name="Checking",
 			platform="Bank",
 			currency="cny",
-			balance=1000,
+			balance=D("1000"),
 			account_type="bank",
 		),
 		current_user,
@@ -2682,7 +2691,7 @@ def test_build_dashboard_subtracts_liabilities_from_total(
 		FixedAssetCreate(
 			name="Primary Home",
 			category="real_estate",
-			current_value_cny=500_000,
+			current_value_cny=D("500000"),
 		),
 		current_user,
 		session,
@@ -2691,7 +2700,7 @@ def test_build_dashboard_subtracts_liabilities_from_total(
 		OtherAssetCreate(
 			name="Receivable",
 			category="receivable",
-			current_value_cny=20_000,
+			current_value_cny=D("20000"),
 		),
 		current_user,
 		session,
@@ -2701,7 +2710,7 @@ def test_build_dashboard_subtracts_liabilities_from_total(
 			name="Mortgage",
 			category="mortgage",
 			currency="cny",
-			balance=120_000,
+			balance=D("120000"),
 		),
 		current_user,
 		session,
@@ -2728,7 +2737,7 @@ def test_build_dashboard_converts_usd_liabilities_to_cny(
 			name="Checking",
 			platform="Bank",
 			currency="cny",
-			balance=1_000,
+			balance=D("1000"),
 			account_type="bank",
 		),
 		current_user,
@@ -2739,7 +2748,7 @@ def test_build_dashboard_converts_usd_liabilities_to_cny(
 			name="USD Credit",
 			category="credit_card",
 			currency="usd",
-			balance=100,
+			balance=D("100"),
 		),
 		current_user,
 		session,
@@ -2764,10 +2773,10 @@ def test_build_dashboard_hides_fallback_cache_warning_for_non_admin(
 		SecurityHoldingCreate(
 			symbol="1810.HK",
 			name="Xiaomi",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="hkd",
 			market="hk",
-			cost_basis_price=12.5,
+			cost_basis_price=D("12.5"),
 		),
 		current_user,
 		session,
@@ -2794,10 +2803,10 @@ def test_build_dashboard_keeps_fallback_cache_warning_for_admin(
 		SecurityHoldingCreate(
 			symbol="1810.HK",
 			name="Xiaomi",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="hkd",
 			market="hk",
-			cost_basis_price=12.5,
+			cost_basis_price=D("12.5"),
 		),
 		current_user,
 		session,
@@ -2821,9 +2830,9 @@ def test_holding_update_keeps_existing_history_sync_request(session: Session) ->
 		SecurityHoldingCreate(
 			symbol="AAPL",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 3, 1),
 		),
@@ -2888,8 +2897,8 @@ def test_process_pending_holding_history_sync_rebuilds_hourly_rows(
 			end_at: datetime,
 		) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
 			return [
-				(start_at.replace(minute=0, second=0, microsecond=0), 80.0),
-				((end_at - timedelta(hours=1)).replace(minute=0, second=0, microsecond=0), 100.0),
+				(start_at.replace(minute=0, second=0, microsecond=0), D("80")),
+				((end_at - timedelta(hours=1)).replace(minute=0, second=0, microsecond=0), D("100")),
 			], "USD", []
 
 	monkeypatch.setattr(service_context, "market_data_client", HistoryAwareMarketDataClient())
@@ -2899,9 +2908,9 @@ def test_process_pending_holding_history_sync_rebuilds_hourly_rows(
 		SecurityHoldingCreate(
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 3, 4),
 		),
@@ -2928,7 +2937,7 @@ def test_process_pending_holding_history_sync_rebuilds_hourly_rows(
 			.where(HoldingPerformanceSnapshot.user_id == current_user.username)
 			.where(HoldingPerformanceSnapshot.scope == "HOLDING")
 			.where(HoldingPerformanceSnapshot.symbol == "AAPL")
-			.order_by(HoldingPerformanceSnapshot.created_at.asc()),
+			.order_by(sql_expr(HoldingPerformanceSnapshot.created_at).asc()),
 		),
 	)
 	assert holding_rows
@@ -2940,7 +2949,7 @@ def test_process_pending_holding_history_sync_rebuilds_hourly_rows(
 			select(HoldingPerformanceSnapshot)
 			.where(HoldingPerformanceSnapshot.user_id == current_user.username)
 			.where(HoldingPerformanceSnapshot.scope == "TOTAL")
-			.order_by(HoldingPerformanceSnapshot.created_at.asc()),
+			.order_by(sql_expr(HoldingPerformanceSnapshot.created_at).asc()),
 		),
 	)
 	assert total_rows
@@ -2966,8 +2975,8 @@ def test_process_pending_holding_history_sync_uses_transaction_state_per_period(
 			end_at: datetime,
 		) -> tuple[list[tuple[datetime, Decimal]], str | None, list[str]]:
 			return [
-				(first_bucket, 80.0),
-				(second_trade_bucket, 100.0),
+				(first_bucket, D("80")),
+				(second_trade_bucket, D("100")),
 			], "USD", []
 
 	monkeypatch.setattr(service_context, "market_data_client", HistoryAwareMarketDataClient())
@@ -2977,9 +2986,9 @@ def test_process_pending_holding_history_sync_uses_transaction_state_per_period(
 		SecurityHoldingCreate(
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 			started_on=date(2026, 3, 4),
 		),
@@ -2991,8 +3000,8 @@ def test_process_pending_holding_history_sync_uses_transaction_state_per_period(
 			side="BUY",
 			symbol="AAPL",
 			name="Apple",
-			quantity=1,
-			price=100,
+			quantity=D("1"),
+			price=D("100"),
 			fallback_currency="USD",
 			market="US",
 			traded_on=date(2026, 3, 5),
@@ -3009,7 +3018,7 @@ def test_process_pending_holding_history_sync_uses_transaction_state_per_period(
 			.where(HoldingPerformanceSnapshot.user_id == current_user.username)
 			.where(HoldingPerformanceSnapshot.scope == "HOLDING")
 			.where(HoldingPerformanceSnapshot.symbol == "AAPL")
-			.order_by(HoldingPerformanceSnapshot.created_at.asc()),
+			.order_by(sql_expr(HoldingPerformanceSnapshot.created_at).asc()),
 		),
 	)
 	assert holding_rows
@@ -3074,7 +3083,7 @@ def test_process_pending_holding_history_sync_preserves_prior_hours_for_backfill
 			name="主账户",
 			platform="Bank",
 			currency="CNY",
-			balance=210_000,
+			balance=D("210000"),
 			account_type="BANK",
 			started_on=date(2026, 3, 1),
 		),
@@ -3086,8 +3095,8 @@ def test_process_pending_holding_history_sync_preserves_prior_hours_for_backfill
 			side="BUY",
 			symbol="BABA",
 			name="Alibaba",
-			quantity=1000,
-			price=10,
+			quantity=D("1000"),
+			price=D("10"),
 			fallback_currency="USD",
 			market="US",
 			traded_on=date(2026, 3, 1),
@@ -3102,8 +3111,8 @@ def test_process_pending_holding_history_sync_preserves_prior_hours_for_backfill
 			side="BUY",
 			symbol="BABA",
 			name="Alibaba",
-			quantity=400,
-			price=10,
+			quantity=D("400"),
+			price=D("10"),
 			fallback_currency="USD",
 			market="US",
 			traded_on=date(2026, 3, 22),
@@ -3120,7 +3129,7 @@ def test_process_pending_holding_history_sync_preserves_prior_hours_for_backfill
 		session.exec(
 			select(PortfolioSnapshot)
 			.where(PortfolioSnapshot.user_id == current_user.username)
-			.order_by(PortfolioSnapshot.created_at.asc()),
+			.order_by(sql_expr(PortfolioSnapshot.created_at).asc()),
 		),
 	)
 	assert portfolio_rows
@@ -3184,9 +3193,9 @@ def test_process_pending_holding_history_sync_applies_holding_adjustment_on_effe
 		SecurityHoldingCreate(
 			symbol="BABA",
 			name="Alibaba",
-			quantity=1000,
+			quantity=D("1000"),
 			fallback_currency="USD",
-			cost_basis_price=10,
+			cost_basis_price=D("10"),
 			market="US",
 			started_on=date(2026, 3, 1),
 		),
@@ -3197,8 +3206,8 @@ def test_process_pending_holding_history_sync_applies_holding_adjustment_on_effe
 	update_holding(
 		holding.id or 0,
 		SecurityHoldingUpdate(
-			quantity=1400,
-			cost_basis_price=10,
+			quantity=D("1400"),
+			cost_basis_price=D("10"),
 			started_on=date(2026, 3, 22),
 		),
 		current_user,
@@ -3211,7 +3220,7 @@ def test_process_pending_holding_history_sync_applies_holding_adjustment_on_effe
 		session.exec(
 			select(PortfolioSnapshot)
 			.where(PortfolioSnapshot.user_id == current_user.username)
-			.order_by(PortfolioSnapshot.created_at.asc()),
+			.order_by(sql_expr(PortfolioSnapshot.created_at).asc()),
 		),
 	)
 	assert portfolio_rows
@@ -3284,9 +3293,9 @@ def test_rebuild_user_holding_history_snapshots_backfills_holdings_without_trans
 			user_id=current_user.username,
 			symbol="AAPL",
 			name="Apple",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="USD",
-			cost_basis_price=10,
+			cost_basis_price=D("10"),
 			market="US",
 			started_on=None,
 			created_at=datetime(2026, 3, 1, 2, 0, tzinfo=timezone.utc),
@@ -3300,7 +3309,7 @@ def test_rebuild_user_holding_history_snapshots_backfills_holdings_without_trans
 		session.exec(
 			select(SecurityHoldingTransaction)
 			.where(SecurityHoldingTransaction.user_id == current_user.username)
-			.order_by(SecurityHoldingTransaction.id.asc()),
+			.order_by(sql_expr(SecurityHoldingTransaction.id).asc()),
 		),
 	)
 	assert len(backfilled_transactions) == 1
@@ -3359,12 +3368,12 @@ def test_get_dashboard_refresh_clears_runtime_cache_and_forces_rebuild(
 		assert db_session is session
 		return DashboardResponse(
 			server_today=date(2026, 3, 1),
-			total_value_cny=0,
-			cash_value_cny=0,
-			holdings_value_cny=0,
-			fixed_assets_value_cny=0,
-			liabilities_value_cny=0,
-			other_assets_value_cny=0,
+			total_value_cny=D("0"),
+			cash_value_cny=D("0"),
+			holdings_value_cny=D("0"),
+			fixed_assets_value_cny=D("0"),
+			liabilities_value_cny=D("0"),
+			other_assets_value_cny=D("0"),
 			usd_cny_rate=None,
 			hkd_cny_rate=None,
 			cash_accounts=[],
@@ -3433,12 +3442,12 @@ def test_get_dashboard_refresh_only_clears_runtime_cache_once_within_global_wind
 		refresh_calls["dashboard_rebuild"] += 1
 		return DashboardResponse(
 			server_today=date(2026, 3, 1),
-			total_value_cny=0,
-			cash_value_cny=0,
-			holdings_value_cny=0,
-			fixed_assets_value_cny=0,
-			liabilities_value_cny=0,
-			other_assets_value_cny=0,
+			total_value_cny=D("0"),
+			cash_value_cny=D("0"),
+			holdings_value_cny=D("0"),
+			fixed_assets_value_cny=D("0"),
+			liabilities_value_cny=D("0"),
+			other_assets_value_cny=D("0"),
 			usd_cny_rate=None,
 			hkd_cny_rate=None,
 			cash_accounts=[],
@@ -3499,12 +3508,12 @@ def test_refresh_user_dashboards_clears_market_data_once_per_cycle(
 		refresh_calls["dashboard_rebuild"] += 1
 		return DashboardResponse(
 			server_today=date(2026, 3, 1),
-			total_value_cny=0,
-			cash_value_cny=0,
-			holdings_value_cny=0,
-			fixed_assets_value_cny=0,
-			liabilities_value_cny=0,
-			other_assets_value_cny=0,
+			total_value_cny=D("0"),
+			cash_value_cny=D("0"),
+			holdings_value_cny=D("0"),
+			fixed_assets_value_cny=D("0"),
+			liabilities_value_cny=D("0"),
+			other_assets_value_cny=D("0"),
 			usd_cny_rate=None,
 			hkd_cny_rate=None,
 			cash_accounts=[],
