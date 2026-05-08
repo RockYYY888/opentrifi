@@ -726,7 +726,7 @@ def test_eastmoney_search_provider_returns_empty_results_for_null_data(
 				json={"QuotationCodeTable": {"Data": None, "Status": 0, "TotalCount": 0}},
 			)
 
-	monkeypatch.setattr("app.services.market_data.httpx.AsyncClient", StaticAsyncClient)
+	monkeypatch.setattr("app.services.market_data_parts.providers.httpx.AsyncClient", StaticAsyncClient)
 	provider = EastMoneySecuritySearchProvider()
 
 	results = asyncio.run(provider.search("不存在的标的xyz123"))
@@ -755,7 +755,7 @@ def test_yahoo_search_provider_returns_empty_results_for_null_quotes(
 				json={"count": 0, "quotes": None},
 			)
 
-	monkeypatch.setattr("app.services.market_data.httpx.AsyncClient", StaticAsyncClient)
+	monkeypatch.setattr("app.services.market_data_parts.providers.httpx.AsyncClient", StaticAsyncClient)
 	provider = YahooSecuritySearchProvider()
 
 	results = asyncio.run(provider.search("zzznotfound"))
@@ -819,7 +819,7 @@ def test_yahoo_quote_provider_falls_back_to_chart_endpoint_when_quote_endpoint_u
 				},
 			)
 
-	monkeypatch.setattr("app.services.market_data.httpx.AsyncClient", StaticAsyncClient)
+	monkeypatch.setattr("app.services.market_data_parts.providers.httpx.AsyncClient", StaticAsyncClient)
 	provider = YahooQuoteProvider()
 
 	quote = asyncio.run(provider.fetch_quote("AAPL"))
@@ -856,7 +856,7 @@ def test_eastmoney_quote_provider_exposes_http_status_details(
 				response=response,
 			)
 
-	monkeypatch.setattr("app.services.market_data.httpx.AsyncClient", FailingAsyncClient)
+	monkeypatch.setattr("app.services.market_data_parts.providers.httpx.AsyncClient", FailingAsyncClient)
 	provider = EastMoneyQuoteProvider()
 
 	with pytest.raises(
@@ -889,7 +889,7 @@ def test_frankfurter_rate_provider_uses_latest_official_endpoint(
 				json={"base": "USD", "rates": {"CNY": 6.8961}},
 			)
 
-	monkeypatch.setattr("app.services.market_data.httpx.AsyncClient", StaticAsyncClient)
+	monkeypatch.setattr("app.services.market_data_parts.providers.httpx.AsyncClient", StaticAsyncClient)
 	provider = FrankfurterRateProvider()
 
 	rate = asyncio.run(provider.fetch_rate("USD", "CNY"))
