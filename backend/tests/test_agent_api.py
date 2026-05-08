@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import Iterator
 from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 import json
 import re
 
@@ -63,7 +64,7 @@ from app.services.auth_service import (
 	login_user,
 	list_agent_tokens,
 )
-from app.services import dashboard_service, job_service, service_context
+from app.services import dashboard_query_service, job_service, service_context
 from app.services.agent_demo_service import seed_agent_workspace_demo
 from app.services.asset_record_service import list_asset_records
 
@@ -971,7 +972,7 @@ def test_get_agent_context_returns_dashboard_summary_and_recent_transactions(
 			warnings=["quote-cache-hit"],
 		)
 
-	monkeypatch.setattr(dashboard_service, "get_dashboard", fake_get_dashboard)
+	monkeypatch.setattr(dashboard_query_service, "get_dashboard", fake_get_dashboard)
 
 	context = asyncio.run(
 		get_agent_context(
@@ -1195,7 +1196,8 @@ def test_create_agent_task_executes_cash_transfer(session: Session) -> None:
 	assert stored_task is not None
 	assert stored_task.status == "DONE"
 	assert stored_task.result_json is not None
-	assert '"source_amount": 120' in stored_task.result_json
+	result_payload = json.loads(stored_task.result_json)
+	assert Decimal(result_payload["transfer"]["source_amount"]) == Decimal("120")
 	assert len(session.exec(select(AgentTask)).all()) == 1
 
 
@@ -1257,7 +1259,8 @@ def test_agent_task_update_cash_transfer_links_mutation_audit(session: Session) 
 	assert stored_task is not None
 	assert stored_task.status == "DONE"
 	assert stored_task.result_json is not None
-	assert '"source_amount": 80' in stored_task.result_json
+	result_payload = json.loads(stored_task.result_json)
+	assert Decimal(result_payload["transfer"]["source_amount"]) == Decimal("80")
 	mutations = list_asset_mutation_audits(
 		current_user,
 		session,

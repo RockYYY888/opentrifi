@@ -162,7 +162,7 @@ async def list_accounts(
 	current_user: CurrentUserDependency,
 	session: SessionDependency,
 ) -> list[CashAccountRead]:
-	from app.services.dashboard_service import _get_cached_dashboard
+	from app.services.dashboard_query_service import _get_cached_dashboard
 
 	dashboard = await _get_cached_dashboard(session, current_user)
 	accounts = list(

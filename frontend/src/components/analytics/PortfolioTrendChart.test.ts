@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	buildPortfolioTrendAreaData,
 	buildPortfolioTrendChartData,
-} from "./PortfolioTrendChart";
+} from "./trendChartModels";
 
 describe("buildPortfolioTrendChartData", () => {
 	it("keeps timeline points visible for both positive and negative values", () => {

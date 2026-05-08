@@ -13,11 +13,8 @@ import {
 
 import type { HoldingTransactionRecord } from "../../types/assets";
 import type {
-	HoldingReturnSeries,
-	TimelinePoint,
 	TimelineRange,
 } from "../../types/portfolioAnalytics";
-import { formatQuantity } from "../../lib/assetFormatting";
 import {
 	ANALYTICS_TOOLTIP_ITEM_STYLE,
 	ANALYTICS_TOOLTIP_LABEL_STYLE,
@@ -35,33 +32,18 @@ import {
 } from "../../utils/portfolioAnalytics";
 import "./analytics.css";
 import {
-	buildThresholdSegmentedAreaData,
-	buildThresholdSegmentedChartData,
 	buildThresholdSegmentedCoordinateData,
 	isThresholdSegmentedCrossingPoint,
 	type ThresholdSegmentedCoordinatePoint,
-	type ThresholdSegmentedPoint,
 } from "./chartSegmentation";
 import { TREND_CHART_COLORS } from "./chartTheme";
 import { buildChartTradeMarkers } from "./chartTradeMarkers";
 import { TradeMarkerScatter } from "./TradeMarkerScatter";
 import { TimelineRangeSelector } from "./TimelineRangeSelector";
+import type { ReturnTrendSeriesOption } from "./trendChartModels";
 import { useChartInteractionLock } from "./useChartInteractionLock";
 import { useResponsiveChartFrame } from "./useResponsiveChartFrame";
 import { useTimelineRangeSelection } from "./useTimelineRangeSelection";
-
-type ReturnTrendSeriesOption = {
-	key: string;
-	label: string;
-	summaryLabel?: string;
-	quantityLabel?: string;
-	second_series?: TimelinePoint[];
-	minute_series?: TimelinePoint[];
-	hour_series: TimelinePoint[];
-	day_series: TimelinePoint[];
-	month_series: TimelinePoint[];
-	year_series: TimelinePoint[];
-};
 
 type ReturnTrendChartProps = {
 	title: string;
@@ -97,7 +79,6 @@ const POSITIVE_RETURN_FILL = TREND_CHART_COLORS.positiveFill;
 const NEGATIVE_RETURN_FILL = TREND_CHART_COLORS.negativeFill;
 const RETURN_LINE_COLOR = "rgba(230, 235, 241, 0.95)";
 const ZERO_RETURN_THRESHOLD = 0;
-type ReturnTrendChartPoint = ThresholdSegmentedPoint;
 type ReturnTrendRenderablePoint = ThresholdSegmentedCoordinatePoint;
 
 function buildNumericXAxisDomain(
@@ -118,20 +99,6 @@ function buildNumericXAxisDomain(
 	return [firstValue, lastValue];
 }
 
-export function buildReturnTrendChartData(
-	series: TimelinePoint[],
-	thresholdValue = 0,
-): ReturnTrendChartPoint[] {
-	return buildThresholdSegmentedChartData(series, thresholdValue);
-}
-
-export function buildReturnTrendAreaData(
-	series: TimelinePoint[],
-	thresholdValue = 0,
-): ReturnTrendChartPoint[] {
-	return buildThresholdSegmentedAreaData(series, thresholdValue);
-}
-
 type TooltipPayloadEntry = {
 	dataKey?: string;
 	value?: number;
@@ -139,7 +106,7 @@ type TooltipPayloadEntry = {
 };
 
 function isInteractiveTrendPoint(
-	point: Pick<ThresholdSegmentedPoint, "crossingPoint" | "synthetic"> | null | undefined,
+	point: { crossingPoint?: boolean } | null | undefined,
 ): boolean {
 	return !isThresholdSegmentedCrossingPoint(point);
 }
@@ -151,68 +118,6 @@ function getAnalyticsPillToneClass(value: number | null | undefined): string {
 	return value > 0
 		? "analytics-pill analytics-pill--positive"
 		: "analytics-pill analytics-pill--negative";
-}
-
-function formatHoldingSelectorLabel(item: HoldingReturnSeries): string {
-	return `${formatHoldingSummaryLabel(item)} · ${formatHoldingQuantityLabel(item)}`;
-}
-
-function formatHoldingSummaryLabel(item: HoldingReturnSeries): string {
-	return `${item.name} (${item.symbol})`;
-}
-
-function formatHoldingQuantityLabel(item: HoldingReturnSeries): string {
-	const quantity = Number.isFinite(item.quantity) ? formatQuantity(item.quantity) : "0";
-	return `${quantity} 股/份`;
-}
-
-function toSeriesOptions(items: HoldingReturnSeries[]): ReturnTrendSeriesOption[] {
-	return items.map((item) => ({
-		key: item.symbol,
-		label: formatHoldingSelectorLabel(item),
-		summaryLabel: formatHoldingSummaryLabel(item),
-		quantityLabel: formatHoldingQuantityLabel(item),
-		second_series: item.second_series,
-		minute_series: item.minute_series,
-		hour_series: item.hour_series,
-		day_series: item.day_series,
-		month_series: item.month_series,
-		year_series: item.year_series,
-	}));
-}
-
-export function createAggregateReturnOption(
-	label: string,
-	second_or_hour_series: TimelinePoint[],
-	minute_or_day_series: TimelinePoint[],
-	hour_or_month_series: TimelinePoint[],
-	day_or_year_series: TimelinePoint[],
-	month_series?: TimelinePoint[],
-	year_series?: TimelinePoint[],
-): ReturnTrendSeriesOption {
-	const second_series = year_series === undefined ? [] : second_or_hour_series;
-	const minute_series = year_series === undefined ? [] : minute_or_day_series;
-	const hour_series = year_series === undefined ? second_or_hour_series : hour_or_month_series;
-	const day_series = year_series === undefined ? minute_or_day_series : day_or_year_series;
-	const resolvedMonthSeries = year_series === undefined ? hour_or_month_series : (month_series ?? []);
-	const resolvedYearSeries = year_series === undefined ? day_or_year_series : year_series;
-
-	return {
-		key: "aggregate",
-		label,
-		second_series,
-		minute_series,
-		hour_series,
-		day_series,
-		month_series: resolvedMonthSeries,
-		year_series: resolvedYearSeries,
-	};
-}
-
-export function createHoldingReturnOptions(
-	items: HoldingReturnSeries[],
-): ReturnTrendSeriesOption[] {
-	return toSeriesOptions(items);
 }
 
 export function ReturnTrendChart({

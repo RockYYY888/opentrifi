@@ -7,10 +7,8 @@ import { HoldingsBreakdownChart } from "./HoldingsBreakdownChart";
 import { PlatformBreakdownChart } from "./PlatformBreakdownChart";
 import { PortfolioAnalytics } from "./PortfolioAnalytics";
 import { PortfolioTrendChart } from "./PortfolioTrendChart";
-import {
-	ReturnTrendChart,
-	createAggregateReturnOption,
-} from "./ReturnTrendChart";
+import { ReturnTrendChart } from "./ReturnTrendChart";
+import { createAggregateReturnOption } from "./trendChartModels";
 
 const rechartsState = vi.hoisted(() => ({
 	responsiveContainers: [] as Array<{

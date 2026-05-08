@@ -6,10 +6,8 @@ import { AllocationChart } from "./AllocationChart";
 import { PlatformBreakdownChart } from "./PlatformBreakdownChart";
 import { PortfolioInsights } from "./PortfolioInsights";
 import { PortfolioTrendChart } from "./PortfolioTrendChart";
-import {
-	createHoldingReturnOptions,
-	ReturnTrendChart,
-} from "./ReturnTrendChart";
+import { ReturnTrendChart } from "./ReturnTrendChart";
+import { createHoldingReturnOptions } from "./trendChartModels";
 import "./analytics.css";
 
 export type PortfolioAnalyticsProps = PortfolioAnalyticsData & {

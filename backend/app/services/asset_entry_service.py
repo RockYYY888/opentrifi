@@ -39,7 +39,7 @@ async def list_fixed_assets(
 	current_user: CurrentUserDependency,
 	session: SessionDependency,
 ) -> list[FixedAssetRead]:
-	from app.services.dashboard_service import _get_cached_dashboard
+	from app.services.dashboard_query_service import _get_cached_dashboard
 
 	dashboard = await _get_cached_dashboard(session, current_user)
 	assets = list(
@@ -196,7 +196,7 @@ async def list_liabilities(
 	current_user: CurrentUserDependency,
 	session: SessionDependency,
 ) -> list[LiabilityEntryRead]:
-	from app.services.dashboard_service import _get_cached_dashboard
+	from app.services.dashboard_query_service import _get_cached_dashboard
 
 	dashboard = await _get_cached_dashboard(session, current_user)
 	entries = list(
@@ -324,7 +324,7 @@ async def list_other_assets(
 	current_user: CurrentUserDependency,
 	session: SessionDependency,
 ) -> list[OtherAssetRead]:
-	from app.services.dashboard_service import _get_cached_dashboard
+	from app.services.dashboard_query_service import _get_cached_dashboard
 
 	dashboard = await _get_cached_dashboard(session, current_user)
 	assets = list(

@@ -9,6 +9,7 @@ from app.models import CashAccount
 
 HOLDING_QUANTITY_EPSILON = FIXED_EPSILON
 
+@dataclass(slots=True)
 class AppliedCashSettlement:
 	cash_account: CashAccount
 	settled_amount: Decimal
@@ -19,14 +20,12 @@ class AppliedCashSettlement:
 	auto_created_cash_account: bool
 
 @dataclass(slots=True)
-
 class HoldingLot:
 	quantity: Decimal
 	traded_on: date
 	cost_per_unit: Decimal | None
 
 @dataclass(slots=True)
-
 class ProjectedHoldingState:
 	symbol: str
 	name: str

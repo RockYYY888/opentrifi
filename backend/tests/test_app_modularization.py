@@ -14,7 +14,7 @@ import app.worker as worker
 from app.models import HOLDING_HISTORY_SYNC_STATUSES, HoldingHistorySyncRequest, OutboxJob, UserAccount, utc_now
 from app.schemas import SecurityHoldingTransactionCreate
 from app.security import hash_password
-from app.services import dashboard_query_service, dashboard_service, history_service, job_service, service_context
+from app.services import dashboard_query_service, history_service, job_service, service_context
 from app.services.holding_transaction_service import create_holding_transaction
 
 

@@ -93,11 +93,9 @@ from app.services.market_data import Quote, QuoteLookupError
 from app.services import (
 	common_service,
 	dashboard_query_service,
-	dashboard_service,
 	history_service,
 	service_context,
 )
-import app.services.dashboard_query_service as dashboard_query_service
 import app.services.realtime_analytics_service as realtime_analytics_service
 
 
@@ -986,7 +984,7 @@ def test_holding_transaction_buy_and_sell_rebuilds_position_from_lots(session: S
 	assert applied_buy.holding is not None
 	assert applied_buy.holding.quantity == 3
 	assert applied_buy.holding.started_on == date(2026, 2, 1)
-	assert applied_buy.holding.cost_basis_price == pytest.approx(86.66666667)
+	assert applied_buy.holding.cost_basis_price == Decimal("86.6667")
 
 	applied_sell = create_holding_transaction(
 		SecurityHoldingTransactionCreate(
@@ -1005,7 +1003,7 @@ def test_holding_transaction_buy_and_sell_rebuilds_position_from_lots(session: S
 	assert applied_sell.holding is not None
 	assert applied_sell.holding.quantity == 1
 	assert applied_sell.holding.started_on == date(2026, 2, 14)
-	assert applied_sell.holding.cost_basis_price == pytest.approx(80.0)
+	assert applied_sell.holding.cost_basis_price == Decimal("80.0000")
 
 	holding_transactions = list_holding_transactions(holding.id or 0, current_user, session)
 	assert len(holding_transactions) == 3
@@ -2356,7 +2354,7 @@ def test_update_holding_rebases_earliest_transaction_for_backdated_holding_corre
 	assert updated_holding.name == "Apple"
 	assert updated_holding.quantity == 5
 	assert updated_holding.fallback_currency == "USD"
-	assert updated_holding.cost_basis_price == pytest.approx(114.4)
+	assert updated_holding.cost_basis_price == Decimal("114.4000")
 	assert updated_holding.market == "US"
 	assert updated_holding.broker == "IBKR"
 	assert updated_holding.note == "original note"
@@ -2620,13 +2618,13 @@ def test_create_new_asset_categories_persists_records(session: Session) -> None:
 	)
 
 	assert fixed_asset.category == "REAL_ESTATE"
-	assert fixed_asset.return_pct == 11.11
+	assert fixed_asset.return_pct == Decimal("11.11")
 	assert fixed_asset.started_on == date(2024, 1, 1)
 	assert liability.category == "MORTGAGE"
 	assert liability.started_on == date(2024, 1, 2)
 	assert other_asset.category == "RECEIVABLE"
 	assert other_asset.started_on == date(2025, 5, 6)
-	assert other_asset.return_pct == 11.11
+	assert other_asset.return_pct == Decimal("11.11")
 
 	assert session.exec(select(FixedAsset)).one().user_id == current_user.username
 	assert session.exec(select(LiabilityEntry)).one().user_id == current_user.username
@@ -2776,7 +2774,7 @@ def test_build_dashboard_hides_fallback_cache_warning_for_non_admin(
 	)
 	monkeypatch.setattr(service_context, "market_data_client", WarningMarketDataClient())
 	monkeypatch.setattr(
-		dashboard_service,
+		dashboard_query_service,
 		"_has_holding_history_sync_pending",
 		lambda *_args, **_kwargs: False,
 	)
@@ -2806,7 +2804,7 @@ def test_build_dashboard_keeps_fallback_cache_warning_for_admin(
 	)
 	monkeypatch.setattr(service_context, "market_data_client", WarningMarketDataClient())
 	monkeypatch.setattr(
-		dashboard_service,
+		dashboard_query_service,
 		"_has_holding_history_sync_pending",
 		lambda *_args, **_kwargs: False,
 	)
@@ -3394,7 +3392,7 @@ def test_get_dashboard_refresh_clears_runtime_cache_and_forces_rebuild(
 		"sample_realtime_analytics_once",
 		fake_sample_realtime_analytics_once,
 	)
-	monkeypatch.setattr(dashboard_service, "_get_cached_dashboard", fake_get_cached_dashboard)
+	monkeypatch.setattr(dashboard_query_service, "_get_cached_dashboard", fake_get_cached_dashboard)
 
 	asyncio.run(dashboard_query_service.get_dashboard(current_user, session, True))
 
@@ -3468,7 +3466,7 @@ def test_get_dashboard_refresh_only_clears_runtime_cache_once_within_global_wind
 		"sample_realtime_analytics_once",
 		fake_sample_realtime_analytics_once,
 	)
-	monkeypatch.setattr(dashboard_service, "_get_cached_dashboard", fake_get_cached_dashboard)
+	monkeypatch.setattr(dashboard_query_service, "_get_cached_dashboard", fake_get_cached_dashboard)
 	runtime_state.set_last_global_force_refresh_at(None)
 
 	asyncio.run(dashboard_query_service.get_dashboard(current_user, session, True))
@@ -3528,7 +3526,7 @@ def test_refresh_user_dashboards_clears_market_data_once_per_cycle(
 		)
 
 	monkeypatch.setattr(service_context, "market_data_client", RefreshAwareClient())
-	monkeypatch.setattr(dashboard_service, "_get_cached_dashboard", fake_get_cached_dashboard)
+	monkeypatch.setattr(dashboard_query_service, "_get_cached_dashboard", fake_get_cached_dashboard)
 
 	asyncio.run(dashboard_query_service._refresh_user_dashboards(session, [current_user], clear_market_data=True))
 

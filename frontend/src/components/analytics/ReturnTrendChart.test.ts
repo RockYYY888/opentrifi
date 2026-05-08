@@ -4,7 +4,7 @@ import {
 	buildReturnTrendAreaData,
 	buildReturnTrendChartData,
 	createHoldingReturnOptions,
-} from "./ReturnTrendChart";
+} from "./trendChartModels";
 
 describe("buildReturnTrendChartData", () => {
 	it("splits positive and negative regions while keeping original values", () => {

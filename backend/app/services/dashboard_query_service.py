@@ -81,13 +81,11 @@ async def _refresh_user_dashboards(
 	*,
 	clear_market_data: bool = False,
 ) -> None:
-	from app.services import dashboard_service
-
 	if clear_market_data:
 		service_context.market_data_client.clear_runtime_caches()
 
 	for user in users:
-		await dashboard_service._get_cached_dashboard(session, user, force_refresh=True)
+		await _get_cached_dashboard(session, user, force_refresh=True)
 
 def _load_series(session: Session, user_id: str, since: datetime) -> list[PortfolioSnapshot]:
 	return list(
@@ -755,8 +753,6 @@ async def get_dashboard(
 	session: SessionDependency,
 	refresh: bool = False,
 ) -> DashboardResponse:
-	from app.services import dashboard_service
-
 	if refresh:
 		if await _consume_global_force_refresh_slot():
 			from app.services import realtime_analytics_service
@@ -767,10 +763,10 @@ async def get_dashboard(
 				session=session,
 			)
 		_invalidate_dashboard_cache(current_user.username)
-		return await dashboard_service._get_cached_dashboard(
+		return await _get_cached_dashboard(
 			session,
 			current_user,
 			force_refresh=True,
 		)
 
-	return await dashboard_service._get_cached_dashboard(session, current_user)
+	return await _get_cached_dashboard(session, current_user)

@@ -150,7 +150,7 @@ async def get_agent_context(
 	refresh: bool = False,
 	transaction_limit: int = Query(default=50, ge=1, le=500),
 ) -> AgentContextRead:
-	from app.services.dashboard_service import get_dashboard
+	from app.services.dashboard_query_service import get_dashboard
 
 	dashboard = await get_dashboard(current_user, session, refresh)
 	recent_transactions = _list_holding_transactions_for_user(

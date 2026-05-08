@@ -7,18 +7,20 @@ from app.schemas import (
 	FeedbackSummaryRead,
 	UserFeedbackRead,
 )
-from app.services.feedback_service import (
+from app.services.feedback_admin_service import (
 	acknowledge_feedback_for_admin,
 	classify_feedback_for_admin,
 	close_feedback_for_admin,
-	get_feedback_summary,
-	hide_inbox_message_for_current_user,
 	list_feedback_for_admin,
-	list_feedback_for_current_user,
 	list_system_feedback_for_admin,
 	list_user_feedback_for_admin,
-	mark_feedback_seen_for_current_user,
 	reply_to_feedback_for_admin,
+)
+from app.services.feedback_user_service import (
+	get_feedback_summary,
+	hide_inbox_message_for_current_user,
+	list_feedback_for_current_user,
+	mark_feedback_seen_for_current_user,
 	submit_feedback,
 )
 

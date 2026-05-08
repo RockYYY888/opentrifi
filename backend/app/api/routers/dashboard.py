@@ -1,13 +1,12 @@
 from fastapi import APIRouter
 
 from app.schemas import DashboardCorrectionRead, DashboardResponse
-from app.services.dashboard_service import (
+from app.services.dashboard_correction_service import (
 	create_dashboard_correction,
 	delete_dashboard_correction,
-	get_dashboard,
-	healthcheck,
 	list_dashboard_corrections,
 )
+from app.services.dashboard_query_service import get_dashboard, healthcheck
 
 router = APIRouter()
 

@@ -10,10 +10,8 @@ import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { PortfolioTrendChart } from "./PortfolioTrendChart";
-import {
-	ReturnTrendChart,
-	createAggregateReturnOption,
-} from "./ReturnTrendChart";
+import { ReturnTrendChart } from "./ReturnTrendChart";
+import { createAggregateReturnOption } from "./trendChartModels";
 
 vi.mock("recharts", () => ({
 	ResponsiveContainer: ({ children }: { children?: ReactNode }) => (

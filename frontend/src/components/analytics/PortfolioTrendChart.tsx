@@ -37,12 +37,9 @@ import {
 } from "../../utils/portfolioAnalytics";
 import "./analytics.css";
 import {
-	buildThresholdSegmentedAreaData,
-	buildThresholdSegmentedChartData,
 	buildThresholdSegmentedCoordinateData,
 	isThresholdSegmentedCrossingPoint,
 	type ThresholdSegmentedCoordinatePoint,
-	type ThresholdSegmentedPoint,
 } from "./chartSegmentation";
 import { TREND_CHART_COLORS } from "./chartTheme";
 import { buildChartTradeMarkers } from "./chartTradeMarkers";
@@ -74,7 +71,6 @@ type PortfolioTrendChartProps = {
 
 type PortfolioTrendDisplayMode = "value" | "return";
 
-type PortfolioTrendChartPoint = ThresholdSegmentedPoint;
 type PortfolioTrendRenderablePoint = ThresholdSegmentedCoordinatePoint;
 
 type TooltipPayloadEntry = {
@@ -150,20 +146,6 @@ const NEGATIVE_TREND_FILL = TREND_CHART_COLORS.negativeFill;
 const TREND_LINE_COLOR = "rgba(230, 235, 241, 0.95)";
 const ZERO_RETURN_THRESHOLD = 0;
 
-export function buildPortfolioTrendChartData(
-	series: TimelinePoint[],
-	thresholdValue = 0,
-): PortfolioTrendChartPoint[] {
-	return buildThresholdSegmentedChartData(series, thresholdValue);
-}
-
-export function buildPortfolioTrendAreaData(
-	series: TimelinePoint[],
-	thresholdValue = 0,
-): PortfolioTrendChartPoint[] {
-	return buildThresholdSegmentedAreaData(series, thresholdValue);
-}
-
 function formatSignedRatio(ratio: number | null): string {
 	if (ratio === null || !Number.isFinite(ratio)) {
 		return "--";
@@ -193,7 +175,7 @@ function getAnalyticsPillToneClass(value: number | null | undefined): string {
 }
 
 function isInteractiveTrendPoint(
-	point: Pick<ThresholdSegmentedPoint, "crossingPoint" | "synthetic"> | null | undefined,
+	point: { crossingPoint?: boolean } | null | undefined,
 ): boolean {
 	return !isThresholdSegmentedCrossingPoint(point);
 }

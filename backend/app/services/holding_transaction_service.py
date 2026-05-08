@@ -76,7 +76,7 @@ async def list_holdings(
 	current_user: CurrentUserDependency,
 	session: SessionDependency,
 ) -> list[SecurityHoldingRead]:
-	from app.services.dashboard_service import _get_cached_dashboard
+	from app.services.dashboard_query_service import _get_cached_dashboard
 
 	dashboard = await _get_cached_dashboard(session, current_user)
 	holdings = list(
