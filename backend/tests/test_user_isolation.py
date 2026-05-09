@@ -47,6 +47,10 @@ from app.services.market_data import Quote
 from app.services import dashboard_query_service, service_context
 
 
+def D(value: str | int | float) -> Decimal:
+	return Decimal(str(value))
+
+
 class StaticMarketDataClient:
 	async def fetch_fx_rate(
 		self,
@@ -150,7 +154,7 @@ def test_cached_dashboard_keeps_each_user_in_a_separate_cache_entry(
 			name="First Wallet",
 			platform="Cash",
 			currency="cny",
-			balance=100,
+			balance=D("100"),
 			account_type="cash",
 		),
 		first_user,
@@ -161,7 +165,7 @@ def test_cached_dashboard_keeps_each_user_in_a_separate_cache_entry(
 			name="Second Wallet",
 			platform="Cash",
 			currency="cny",
-			balance=250,
+			balance=D("250"),
 			account_type="cash",
 		),
 		second_user,
@@ -189,7 +193,7 @@ def test_dashboard_only_includes_assets_belonging_to_the_current_user(
 			name="Alpha Cash",
 			platform="Bank",
 			currency="cny",
-			balance=100,
+			balance=D("100"),
 			account_type="bank",
 		),
 		first_user,
@@ -199,9 +203,9 @@ def test_dashboard_only_includes_assets_belonging_to_the_current_user(
 		SecurityHoldingCreate(
 			symbol="AAPL",
 			name="Alpha Holding",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 		),
 		first_user,
@@ -212,7 +216,7 @@ def test_dashboard_only_includes_assets_belonging_to_the_current_user(
 			name="Beta Cash",
 			platform="Bank",
 			currency="cny",
-			balance=200,
+			balance=D("200"),
 			account_type="bank",
 		),
 		second_user,
@@ -267,7 +271,7 @@ def test_list_endpoints_exclude_records_owned_by_other_users(
 			name="Owner Cash",
 			platform="Bank",
 			currency="cny",
-			balance=100,
+			balance=D("100"),
 			account_type="bank",
 		),
 		first_user,
@@ -277,9 +281,9 @@ def test_list_endpoints_exclude_records_owned_by_other_users(
 		SecurityHoldingCreate(
 			symbol="AAPL",
 			name="Owner Holding",
-			quantity=2,
+			quantity=D("2"),
 			fallback_currency="usd",
-			cost_basis_price=80,
+			cost_basis_price=D("80"),
 			market="us",
 		),
 		first_user,
@@ -289,7 +293,7 @@ def test_list_endpoints_exclude_records_owned_by_other_users(
 		FixedAssetCreate(
 			name="Owner Car",
 			category="vehicle",
-			current_value_cny=100000,
+			current_value_cny=D("100000"),
 		),
 		first_user,
 		session,
@@ -299,7 +303,7 @@ def test_list_endpoints_exclude_records_owned_by_other_users(
 			name="Owner Card",
 			category="credit_card",
 			currency="cny",
-			balance=5000,
+			balance=D("5000"),
 		),
 		first_user,
 		session,
@@ -308,7 +312,7 @@ def test_list_endpoints_exclude_records_owned_by_other_users(
 		OtherAssetCreate(
 			name="Owner Receivable",
 			category="receivable",
-			current_value_cny=3000,
+			current_value_cny=D("3000"),
 		),
 		first_user,
 		session,
@@ -330,7 +334,7 @@ def test_mutation_endpoints_return_404_for_foreign_owned_records(session: Sessio
 			name="Owner Cash",
 			platform="Bank",
 			currency="cny",
-			balance=100,
+			balance=D("100"),
 			account_type="bank",
 		),
 		owner,
@@ -340,7 +344,7 @@ def test_mutation_endpoints_return_404_for_foreign_owned_records(session: Sessio
 		SecurityHoldingCreate(
 			symbol="AAPL",
 			name="Owner Holding",
-			quantity=1,
+			quantity=D("1"),
 			fallback_currency="usd",
 			market="us",
 		),
@@ -351,7 +355,7 @@ def test_mutation_endpoints_return_404_for_foreign_owned_records(session: Sessio
 		FixedAssetCreate(
 			name="Owner Car",
 			category="vehicle",
-			current_value_cny=100000,
+			current_value_cny=D("100000"),
 		),
 		owner,
 		session,
@@ -361,7 +365,7 @@ def test_mutation_endpoints_return_404_for_foreign_owned_records(session: Sessio
 			name="Owner Card",
 			category="credit_card",
 			currency="cny",
-			balance=5000,
+			balance=D("5000"),
 		),
 		owner,
 		session,
@@ -370,7 +374,7 @@ def test_mutation_endpoints_return_404_for_foreign_owned_records(session: Sessio
 		OtherAssetCreate(
 			name="Owner Receivable",
 			category="receivable",
-			current_value_cny=3000,
+			current_value_cny=D("3000"),
 		),
 		owner,
 		session,
@@ -383,7 +387,7 @@ def test_mutation_endpoints_return_404_for_foreign_owned_records(session: Sessio
 				name="Hijacked Cash",
 				platform="Bank",
 				currency="cny",
-				balance=200,
+				balance=D("200"),
 				account_type="bank",
 			),
 			intruder,
@@ -399,7 +403,7 @@ def test_mutation_endpoints_return_404_for_foreign_owned_records(session: Sessio
 			FixedAssetUpdate(
 				name="Hijacked Car",
 				category="vehicle",
-				current_value_cny=120000,
+				current_value_cny=D("120000"),
 			),
 			intruder,
 			session,
@@ -414,7 +418,7 @@ def test_mutation_endpoints_return_404_for_foreign_owned_records(session: Sessio
 			OtherAssetUpdate(
 				name="Hijacked Receivable",
 				category="receivable",
-				current_value_cny=3500,
+				current_value_cny=D("3500"),
 			),
 			intruder,
 			session,

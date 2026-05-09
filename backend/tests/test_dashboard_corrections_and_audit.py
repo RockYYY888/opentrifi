@@ -2,6 +2,7 @@ import asyncio
 from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -23,6 +24,14 @@ from app.services.holding_transaction_service import create_holding_transaction
 from app.services import dashboard_query_service, service_context
 from app.services.asset_entry_service import create_fixed_asset
 from app.schemas import FixedAssetCreate, SecurityHoldingTransactionCreate
+
+
+def D(value: str | int | float) -> Decimal:
+	return Decimal(str(value))
+
+
+def sql_expr(value: object) -> Any:
+	return value
 
 
 class StaticMarketDataClient:
@@ -110,14 +119,14 @@ def test_dashboard_correction_override_and_delete_are_applied_to_hour_series(
 	session.add(
 		PortfolioSnapshot(
 			user_id=user.username,
-			total_value_cny=1000,
+			total_value_cny=D("1000"),
 			created_at=older_point_at,
 		),
 	)
 	session.add(
 		PortfolioSnapshot(
 			user_id=user.username,
-			total_value_cny=2000,
+			total_value_cny=D("2000"),
 			created_at=newer_point_at,
 		),
 	)
@@ -129,7 +138,7 @@ def test_dashboard_correction_override_and_delete_are_applied_to_hour_series(
 			granularity="hour",
 			bucket_utc=older_point_at,
 			action="OVERRIDE",
-			corrected_value=888,
+			corrected_value=D("888"),
 			reason="修正误录数据",
 		),
 		user,
@@ -164,7 +173,7 @@ def test_account_crud_generates_mutation_audit_rows(session: Session) -> None:
 			name="Audit Wallet",
 			platform="Bank",
 			currency="cny",
-			balance=10,
+			balance=D("10"),
 			account_type="bank",
 		),
 		user,
@@ -176,7 +185,7 @@ def test_account_crud_generates_mutation_audit_rows(session: Session) -> None:
 			name="Audit Wallet 2",
 			platform="Bank",
 			currency="cny",
-			balance=20,
+			balance=D("20"),
 			account_type="bank",
 		),
 		user,
@@ -188,7 +197,7 @@ def test_account_crud_generates_mutation_audit_rows(session: Session) -> None:
 		session.exec(
 			select(AssetMutationAudit)
 			.where(AssetMutationAudit.user_id == user.username)
-			.order_by(AssetMutationAudit.created_at.asc()),
+			.order_by(sql_expr(AssetMutationAudit.created_at).asc()),
 		),
 	)
 
@@ -214,7 +223,7 @@ def test_asset_records_classify_user_system_and_investment_sell_profit(
 			name="应急金",
 			platform="支付宝",
 			currency="CNY",
-			balance=1_000,
+			balance=D("1000"),
 			account_type="ALIPAY",
 		),
 		user,
@@ -225,8 +234,8 @@ def test_asset_records_classify_user_system_and_investment_sell_profit(
 			side="BUY",
 			symbol="0700",
 			name="腾讯控股",
-			quantity=10,
-			price=100,
+			quantity=D("10"),
+			price=D("100"),
 			fallback_currency="HKD",
 			market="HK",
 			traded_on=datetime(2026, 3, 9, tzinfo=timezone.utc).date(),
@@ -240,8 +249,8 @@ def test_asset_records_classify_user_system_and_investment_sell_profit(
 			side="SELL",
 			symbol="0700",
 			name="腾讯控股",
-			quantity=4,
-			price=120,
+			quantity=D("4"),
+			price=D("120"),
 			fallback_currency="HKD",
 			market="HK",
 			traded_on=datetime(2026, 3, 10, tzinfo=timezone.utc).date(),
@@ -254,8 +263,8 @@ def test_asset_records_classify_user_system_and_investment_sell_profit(
 		FixedAssetCreate(
 			name="管理员录入房产",
 			category="REAL_ESTATE",
-			current_value_cny=2_000_000,
-			purchase_value_cny=1_500_000,
+			current_value_cny=D("2000000"),
+			purchase_value_cny=D("1500000"),
 		),
 		admin,
 		session,
@@ -329,6 +338,6 @@ def test_dashboard_correction_requires_symbol_for_holding_scope() -> None:
 			granularity="day",
 			bucket_utc=datetime.now(timezone.utc),
 			action="OVERRIDE",
-			corrected_value=1.23,
+			corrected_value=D("1.23"),
 			reason="缺少symbol",
 		)

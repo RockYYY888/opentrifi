@@ -1,3 +1,5 @@
+from fastapi.routing import APIRoute
+
 from app.main import app
 
 
@@ -82,7 +84,8 @@ def test_api_route_contract_is_stable() -> None:
 	actual_routes = {
 		(method, route.path)
 		for route in app.routes
-		for method in getattr(route, "methods", set()) or set()
+		if isinstance(route, APIRoute)
+		for method in route.methods or set()
 		if route.path.startswith("/api/") and method not in {"HEAD", "OPTIONS"}
 	}
 

@@ -28,7 +28,7 @@ def test_security_holding_read_serializes_aware_timestamps_with_utc_marker() -> 
 		id=1,
 		symbol="AAPL",
 		name="Apple Inc.",
-		quantity=1,
+		quantity=Decimal("1"),
 		fallback_currency="USD",
 		market="US",
 		last_updated=datetime(2026, 3, 1, 4, 20, 51, tzinfo=timezone.utc),
@@ -43,7 +43,7 @@ def test_holding_return_series_includes_quantity_field() -> None:
 	record = HoldingReturnSeries(
 		symbol="0700.HK",
 		name="腾讯控股",
-		quantity=120,
+		quantity=Decimal("120"),
 		hour_series=[],
 		day_series=[],
 		month_series=[],

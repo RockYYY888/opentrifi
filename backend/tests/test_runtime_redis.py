@@ -96,7 +96,7 @@ class InMemoryRedis:
 	def sismember(self, key: str, value: str) -> bool:
 		return value in self.sets.get(key, set())
 
-	def smembers(self, key: str) -> set[bytes]:
+	def smembers(self, key: str) -> set[bytes | str]:
 		return {value.encode("utf-8") for value in self.sets.get(key, set())}
 
 	def scard(self, key: str) -> int:

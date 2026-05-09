@@ -3,9 +3,9 @@ from collections.abc import Iterator
 from datetime import date, timedelta
 from decimal import Decimal
 import threading
+from typing import Any
 
 import pytest
-from sqlalchemy import text
 from sqlmodel import Session, select
 
 import app.database as database
@@ -17,6 +17,14 @@ from app.schemas import SecurityHoldingTransactionCreate
 from app.security import hash_password
 from app.services import dashboard_query_service, history_service, job_service, service_context
 from app.services.holding_transaction_service import create_holding_transaction
+
+
+def D(value: str | int | float) -> Decimal:
+	return Decimal(str(value))
+
+
+def sql_expr(value: object) -> Any:
+	return value
 
 
 class StaticDashboardMarketDataClient:
@@ -187,16 +195,17 @@ def test_engine_recovers_from_closed_pooled_connection(
 ) -> None:
 	engine = database._build_engine(postgres_database_url)
 
-	with Session(engine) as session:
-		assert session.exec(text("select 1")).one() == (1,)
+	with engine.connect() as connection:
+		assert connection.exec_driver_sql("select 1").one() == (1,)
 
 	pooled_connection = engine.raw_connection()
 	driver_connection = pooled_connection.driver_connection
 	pooled_connection.close()
+	assert driver_connection is not None
 	driver_connection.close()
 
-	with Session(engine) as session:
-		assert session.exec(text("select 1")).one() == (1,)
+	with engine.connect() as connection:
+		assert connection.exec_driver_sql("select 1").one() == (1,)
 
 	engine.dispose()
 
@@ -294,7 +303,7 @@ def test_snapshot_rebuild_enqueue_deduplicates_across_concurrent_sessions(
 	second_thread.join(timeout=5)
 
 	assert errors == []
-	jobs = list(session.exec(select(OutboxJob).order_by(OutboxJob.id.asc())))
+	jobs = list(session.exec(select(OutboxJob).order_by(sql_expr(OutboxJob.id).asc())))
 	assert len(jobs) == 1
 	assert claimed_job_ids == [jobs[0].id, jobs[0].id]
 
@@ -358,7 +367,7 @@ def test_claim_next_pending_holding_history_request_is_atomic_across_sessions(
 	session.commit()
 	requests = list(
 		session.exec(
-			select(HoldingHistorySyncRequest).order_by(HoldingHistorySyncRequest.id.asc()),
+			select(HoldingHistorySyncRequest).order_by(sql_expr(HoldingHistorySyncRequest.id).asc()),
 		),
 	)
 	first_commit_started, release_first_commit = _stall_first_thread_commit(
@@ -412,8 +421,8 @@ def test_create_holding_transaction_only_schedules_snapshot_rebuild(
 			symbol="AAPL",
 			name="Apple",
 			market="US",
-			quantity=2,
-			price=180,
+			quantity=D("2"),
+			price=D("180"),
 			fallback_currency="USD",
 			traded_on=date(2026, 3, 9),
 		),

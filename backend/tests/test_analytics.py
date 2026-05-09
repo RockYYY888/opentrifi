@@ -1,17 +1,22 @@
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from app.analytics import build_return_timeline, build_timeline
 from app.models import HoldingPerformanceSnapshot, PortfolioSnapshot
 from app.services.common_service import _is_current_minute
 
 
-def make_snapshot(timestamp: datetime, total: float) -> PortfolioSnapshot:
-	return PortfolioSnapshot(user_id="tester", created_at=timestamp, total_value_cny=total)
+def D(value: str | int | float) -> Decimal:
+	return Decimal(str(value))
+
+
+def make_snapshot(timestamp: datetime, total: str | int | float) -> PortfolioSnapshot:
+	return PortfolioSnapshot(user_id="tester", created_at=timestamp, total_value_cny=D(total))
 
 
 def make_return_snapshot(
 	timestamp: datetime,
-	return_pct: float,
+	return_pct: str | int | float,
 	symbol: str = "TOTAL",
 ) -> HoldingPerformanceSnapshot:
 	return HoldingPerformanceSnapshot(
@@ -19,7 +24,7 @@ def make_return_snapshot(
 		scope="TOTAL" if symbol == "TOTAL" else "HOLDING",
 		symbol=None if symbol == "TOTAL" else symbol,
 		name=None if symbol == "TOTAL" else symbol,
-		return_pct=return_pct,
+		return_pct=D(return_pct),
 		created_at=timestamp,
 	)
 

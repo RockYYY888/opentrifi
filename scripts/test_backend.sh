@@ -52,6 +52,6 @@ cd "${ROOT_DIR}/backend"
 uv run python -m compileall app
 uv run ruff check app tests ../scripts
 uv run python ../scripts/check_backend_decimal_guard.py
-uv run python ../scripts/check_pyright_ratchet.py --baseline "${ASSET_TRACKER_PYRIGHT_BASELINE:-293}" -- app tests
+uv run python ../scripts/check_pyright_ratchet.py --baseline "${ASSET_TRACKER_PYRIGHT_BASELINE:-225}" -- app tests
 
 uv run pytest "$@"
