@@ -58,6 +58,7 @@ from app.services.portfolio_read_service import (
 )
 from app.services import service_context
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 def _summarize_holdings_return_state(
 	holdings: list[ValuedHolding],
@@ -157,10 +158,10 @@ def _persist_holdings_return_snapshot(
 	existing_snapshots = list(
 		session.exec(
 			select(HoldingPerformanceSnapshot)
-			.where(HoldingPerformanceSnapshot.user_id == user_id)
-			.where(HoldingPerformanceSnapshot.created_at >= hour_start)
-			.where(HoldingPerformanceSnapshot.created_at < hour_end)
-			.order_by(HoldingPerformanceSnapshot.created_at.desc()),
+				.where(HoldingPerformanceSnapshot.user_id == user_id)
+				.where(HoldingPerformanceSnapshot.created_at >= hour_start)
+				.where(HoldingPerformanceSnapshot.created_at < hour_end)
+				.order_by(sql_expr(HoldingPerformanceSnapshot.created_at).desc()),
 		),
 	)
 	indexed_snapshots = {
@@ -228,10 +229,10 @@ def _persist_hour_snapshot(
 	existing_snapshots = list(
 		session.exec(
 			select(PortfolioSnapshot)
-			.where(PortfolioSnapshot.user_id == user_id)
-			.where(PortfolioSnapshot.created_at >= hour_start)
-			.where(PortfolioSnapshot.created_at < hour_end)
-			.order_by(PortfolioSnapshot.created_at.desc()),
+				.where(PortfolioSnapshot.user_id == user_id)
+				.where(PortfolioSnapshot.created_at >= hour_start)
+				.where(PortfolioSnapshot.created_at < hour_end)
+				.order_by(sql_expr(PortfolioSnapshot.created_at).desc()),
 		),
 	)
 	primary_snapshot = existing_snapshots[0] if existing_snapshots else None

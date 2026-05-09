@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 import httpx
+from httpx._types import QueryParamTypes
 
 from app.fixed_precision import quantize_decimal, to_decimal
 from app.services.market_data_parts.common import (
@@ -39,7 +40,7 @@ class YahooQuoteProvider:
 		url: str,
 		*,
 		symbol: str,
-		params: dict[str, object],
+		params: QueryParamTypes,
 		source_label: str,
 	) -> dict[str, object]:
 		try:
@@ -68,11 +69,15 @@ class YahooQuoteProvider:
 
 	@staticmethod
 	def _parse_quote_payload(symbol: str, payload: dict[str, object]) -> Quote:
-		results = payload.get("quoteResponse", {}).get("result", [])
+		quote_response = payload.get("quoteResponse")
+		quote_response = quote_response if isinstance(quote_response, dict) else {}
+		results = quote_response.get("result", [])
 		if not results:
 			raise QuoteLookupError(f"No quote data returned for {symbol}.")
 
 		result = results[0]
+		if not isinstance(result, dict):
+			raise QuoteLookupError(f"Invalid quote data returned for {symbol}.")
 		price = result.get("regularMarketPrice")
 		currency = result.get("currency") or result.get("financialCurrency")
 		if price in (None, 0) or not currency:
@@ -91,12 +96,18 @@ class YahooQuoteProvider:
 
 	@staticmethod
 	def _parse_chart_payload(symbol: str, payload: dict[str, object]) -> Quote:
-		result_list = payload.get("chart", {}).get("result") or []
+		chart_payload = payload.get("chart")
+		chart_payload = chart_payload if isinstance(chart_payload, dict) else {}
+		result_list = chart_payload.get("result") or []
 		if not result_list:
 			raise QuoteLookupError(f"No chart quote data returned for {symbol}.")
 
 		result = result_list[0]
+		if not isinstance(result, dict):
+			raise QuoteLookupError(f"Invalid chart quote data returned for {symbol}.")
 		meta = result.get("meta") or {}
+		if not isinstance(meta, dict):
+			raise QuoteLookupError(f"Invalid chart metadata returned for {symbol}.")
 		price = meta.get("regularMarketPrice")
 		if price in (None, 0):
 			quotes = (result.get("indicators") or {}).get("quote") or []

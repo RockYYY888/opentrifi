@@ -27,6 +27,7 @@ from app.services.holding_projection_parts.state import (
 	_projected_holding_started_on,
 )
 from app.services.portfolio_read_service import _to_holding_transaction_read
+from app.services.sql_expression import sql_expr
 
 def _list_holdings_for_symbol(
 	session: Session,
@@ -41,7 +42,7 @@ def _list_holdings_for_symbol(
 			.where(SecurityHolding.user_id == user_id)
 			.where(SecurityHolding.symbol == symbol)
 			.where(SecurityHolding.market == market)
-			.order_by(SecurityHolding.id.asc()),
+			.order_by(sql_expr(SecurityHolding.id).asc()),
 		),
 	)
 
@@ -59,9 +60,9 @@ def _delete_holding_transactions_for_symbol(
 			.where(SecurityHoldingTransaction.symbol == symbol)
 			.where(SecurityHoldingTransaction.market == market)
 			.order_by(
-				SecurityHoldingTransaction.traded_on.desc(),
-				SecurityHoldingTransaction.created_at.desc(),
-				SecurityHoldingTransaction.id.desc(),
+				sql_expr(SecurityHoldingTransaction.traded_on).desc(),
+				sql_expr(SecurityHoldingTransaction.created_at).desc(),
+				sql_expr(SecurityHoldingTransaction.id).desc(),
 			),
 		),
 	)
@@ -72,8 +73,8 @@ def _delete_holding_transactions_for_symbol(
 	if transaction_ids:
 		session.exec(
 			delete(HoldingTransactionCashSettlement)
-			.where(HoldingTransactionCashSettlement.user_id == user_id)
-			.where(HoldingTransactionCashSettlement.holding_transaction_id.in_(transaction_ids)),
+			.where(sql_expr(HoldingTransactionCashSettlement.user_id) == user_id)
+			.where(sql_expr(HoldingTransactionCashSettlement.holding_transaction_id).in_(transaction_ids)),
 		)
 
 	for transaction in transactions:
@@ -95,9 +96,9 @@ def _reverse_and_delete_holding_transactions_for_symbol(
 			.where(SecurityHoldingTransaction.symbol == symbol)
 			.where(SecurityHoldingTransaction.market == market)
 			.order_by(
-				SecurityHoldingTransaction.traded_on.desc(),
-				SecurityHoldingTransaction.created_at.desc(),
-				SecurityHoldingTransaction.id.desc(),
+				sql_expr(SecurityHoldingTransaction.traded_on).desc(),
+				sql_expr(SecurityHoldingTransaction.created_at).desc(),
+				sql_expr(SecurityHoldingTransaction.id).desc(),
 			),
 		),
 	)
@@ -117,8 +118,8 @@ def _reverse_and_delete_holding_transactions_for_symbol(
 	if transaction_ids:
 		session.exec(
 			delete(HoldingTransactionCashSettlement)
-			.where(HoldingTransactionCashSettlement.user_id == current_user.username)
-			.where(HoldingTransactionCashSettlement.holding_transaction_id.in_(transaction_ids)),
+			.where(sql_expr(HoldingTransactionCashSettlement.user_id) == current_user.username)
+			.where(sql_expr(HoldingTransactionCashSettlement.holding_transaction_id).in_(transaction_ids)),
 		)
 
 	for transaction in transactions:
@@ -139,7 +140,7 @@ def _list_holding_transaction_settlements(
 		session.exec(
 			select(HoldingTransactionCashSettlement)
 			.where(HoldingTransactionCashSettlement.user_id == user_id)
-			.where(HoldingTransactionCashSettlement.holding_transaction_id.in_(transaction_ids)),
+			.where(sql_expr(HoldingTransactionCashSettlement.holding_transaction_id).in_(transaction_ids)),
 		),
 	)
 	return {
@@ -250,9 +251,9 @@ def _get_latest_holding_transaction_for_symbol(
 		.where(SecurityHoldingTransaction.symbol == symbol)
 		.where(SecurityHoldingTransaction.market == market)
 		.order_by(
-			SecurityHoldingTransaction.traded_on.desc(),
-			SecurityHoldingTransaction.created_at.desc(),
-			SecurityHoldingTransaction.id.desc(),
+			sql_expr(SecurityHoldingTransaction.traded_on).desc(),
+			sql_expr(SecurityHoldingTransaction.created_at).desc(),
+			sql_expr(SecurityHoldingTransaction.id).desc(),
 		)
 		.limit(1),
 	).first()

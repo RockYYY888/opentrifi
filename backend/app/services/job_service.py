@@ -23,6 +23,7 @@ from app.schemas import (
 	SecurityHoldingTransactionCreate,
 	SecurityHoldingTransactionUpdate,
 )
+from app.services.sql_expression import sql_expr
 logger = logging.getLogger(__name__)
 
 SNAPSHOT_REBUILD_JOB_TYPE = "SNAPSHOT_REBUILD"
@@ -57,8 +58,8 @@ def _load_active_job_by_dedup_key(
 	return session.exec(
 		select(OutboxJob)
 		.where(OutboxJob.dedup_key == dedup_key)
-		.where(OutboxJob.status.in_((PENDING_JOB_STATUS, RUNNING_JOB_STATUS)))
-		.order_by(OutboxJob.id.desc()),
+		.where(sql_expr(OutboxJob.status).in_((PENDING_JOB_STATUS, RUNNING_JOB_STATUS)))
+		.order_by(sql_expr(OutboxJob.id).desc()),
 	).first()
 
 
@@ -138,15 +139,15 @@ def _claim_next_pending_job(session: Session) -> OutboxJob | None:
 	job_id_row = session.exec(
 		update(OutboxJob)
 		.where(
-			OutboxJob.id
+			sql_expr(OutboxJob.id)
 			== select(OutboxJob.id)
 			.where(OutboxJob.status == PENDING_JOB_STATUS)
 			.where(OutboxJob.available_at <= now)
-			.order_by(OutboxJob.created_at.asc(), OutboxJob.id.asc())
+			.order_by(sql_expr(OutboxJob.created_at).asc(), sql_expr(OutboxJob.id).asc())
 			.limit(1)
 			.scalar_subquery(),
 		)
-		.where(OutboxJob.status == PENDING_JOB_STATUS)
+		.where(sql_expr(OutboxJob.status) == PENDING_JOB_STATUS)
 		.values(
 			status=RUNNING_JOB_STATUS,
 			started_at=now,
@@ -155,7 +156,7 @@ def _claim_next_pending_job(session: Session) -> OutboxJob | None:
 			attempt_count=OutboxJob.attempt_count + 1,
 			updated_at=now,
 		)
-		.returning(OutboxJob.id),
+		.returning(sql_expr(OutboxJob.id)),
 	).first()
 	if job_id_row is None:
 		session.rollback()

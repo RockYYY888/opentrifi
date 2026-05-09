@@ -17,6 +17,7 @@ from app.services.common_service import (
 	_touch_model,
 )
 from app.services.market_data import QuoteLookupError
+from app.services.sql_expression import sql_expr
 
 def _prepend_note_entry(existing_note: str | None, entry: str) -> str:
 	normalized_existing = _normalize_optional_text(existing_note)
@@ -66,9 +67,9 @@ def _list_cash_ledger_entries_for_account(
 			.where(CashLedgerEntry.user_id == user_id)
 			.where(CashLedgerEntry.cash_account_id == cash_account_id)
 			.order_by(
-				CashLedgerEntry.happened_on.asc(),
-				CashLedgerEntry.created_at.asc(),
-				CashLedgerEntry.id.asc(),
+				sql_expr(CashLedgerEntry.happened_on).asc(),
+				sql_expr(CashLedgerEntry.created_at).asc(),
+				sql_expr(CashLedgerEntry.id).asc(),
 			),
 		),
 	)
@@ -84,9 +85,9 @@ def _get_cash_account_initial_ledger_entry(
 		.where(CashLedgerEntry.user_id == user_id)
 		.where(CashLedgerEntry.cash_account_id == cash_account_id)
 		.where(CashLedgerEntry.entry_type == "INITIAL_BALANCE")
-		.where(CashLedgerEntry.holding_transaction_id.is_(None))
-		.where(CashLedgerEntry.cash_transfer_id.is_(None))
-		.order_by(CashLedgerEntry.created_at.asc(), CashLedgerEntry.id.asc()),
+		.where(sql_expr(CashLedgerEntry.holding_transaction_id).is_(None))
+		.where(sql_expr(CashLedgerEntry.cash_transfer_id).is_(None))
+		.order_by(sql_expr(CashLedgerEntry.created_at).asc(), sql_expr(CashLedgerEntry.id).asc()),
 	).first()
 
 def _sum_cash_account_ledger_balance(

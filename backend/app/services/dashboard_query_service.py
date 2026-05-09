@@ -74,6 +74,7 @@ from app.services.portfolio_read_service import (
 )
 from app.services import service_context
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 async def _refresh_user_dashboards(
 	session: Session,
@@ -90,10 +91,10 @@ async def _refresh_user_dashboards(
 def _load_series(session: Session, user_id: str, since: datetime) -> list[PortfolioSnapshot]:
 	return list(
 		session.exec(
-			select(PortfolioSnapshot)
-			.where(PortfolioSnapshot.user_id == user_id)
-			.where(PortfolioSnapshot.created_at >= since)
-			.order_by(PortfolioSnapshot.created_at.asc()),
+				select(PortfolioSnapshot)
+				.where(PortfolioSnapshot.user_id == user_id)
+				.where(PortfolioSnapshot.created_at >= since)
+				.order_by(sql_expr(PortfolioSnapshot.created_at).asc()),
 		),
 	)
 
@@ -121,10 +122,10 @@ def _load_realtime_portfolio_series(
 			created_at=snapshot.created_at,
 		)
 		for snapshot in session.exec(
-			select(RealtimePortfolioSnapshot)
-			.where(RealtimePortfolioSnapshot.user_id == user_id)
-			.where(RealtimePortfolioSnapshot.created_at >= since)
-			.order_by(RealtimePortfolioSnapshot.created_at.asc()),
+				select(RealtimePortfolioSnapshot)
+				.where(RealtimePortfolioSnapshot.user_id == user_id)
+				.where(RealtimePortfolioSnapshot.created_at >= since)
+				.order_by(sql_expr(RealtimePortfolioSnapshot.created_at).asc()),
 		)
 	]
 
@@ -154,12 +155,12 @@ def _load_holdings_return_series(
 	statement = (
 		select(HoldingPerformanceSnapshot)
 		.where(HoldingPerformanceSnapshot.user_id == user_id)
-		.where(HoldingPerformanceSnapshot.created_at >= since)
-		.where(HoldingPerformanceSnapshot.scope == scope)
-		.order_by(HoldingPerformanceSnapshot.created_at.asc())
-	)
+			.where(HoldingPerformanceSnapshot.created_at >= since)
+			.where(HoldingPerformanceSnapshot.scope == scope)
+			.order_by(sql_expr(HoldingPerformanceSnapshot.created_at).asc())
+		)
 	if symbol is None:
-		statement = statement.where(HoldingPerformanceSnapshot.symbol.is_(None))
+		statement = statement.where(sql_expr(HoldingPerformanceSnapshot.symbol).is_(None))
 	else:
 		statement = statement.where(HoldingPerformanceSnapshot.symbol == symbol)
 
@@ -194,12 +195,12 @@ def _load_realtime_holdings_return_series(
 	statement = (
 		select(RealtimeHoldingPerformanceSnapshot)
 		.where(RealtimeHoldingPerformanceSnapshot.user_id == user_id)
-		.where(RealtimeHoldingPerformanceSnapshot.created_at >= since)
-		.where(RealtimeHoldingPerformanceSnapshot.scope == scope)
-		.order_by(RealtimeHoldingPerformanceSnapshot.created_at.asc())
-	)
+			.where(RealtimeHoldingPerformanceSnapshot.created_at >= since)
+			.where(RealtimeHoldingPerformanceSnapshot.scope == scope)
+			.order_by(sql_expr(RealtimeHoldingPerformanceSnapshot.created_at).asc())
+		)
 	if symbol is None:
-		statement = statement.where(RealtimeHoldingPerformanceSnapshot.symbol.is_(None))
+		statement = statement.where(sql_expr(RealtimeHoldingPerformanceSnapshot.symbol).is_(None))
 	else:
 		statement = statement.where(RealtimeHoldingPerformanceSnapshot.symbol == symbol)
 

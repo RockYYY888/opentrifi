@@ -9,6 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 BACKEND_APP = REPO_ROOT / "backend" / "app"
 ALLOWED_FLOAT_NAME_FILES = {
 	"fixed_precision.py",
+	"runtime_state.py",
 }
 ALLOWED_FLOAT_LITERAL_FILES = {
 	"services/market_data_parts/client.py",

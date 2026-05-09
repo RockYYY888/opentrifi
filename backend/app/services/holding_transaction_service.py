@@ -71,6 +71,7 @@ from app.services.portfolio_read_service import (
     _to_holding_transaction_read,
 )
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 async def list_holdings(
 	current_user: CurrentUserDependency,
@@ -180,6 +181,7 @@ def update_holding(
 		_validate_holding_quantity_for_market(payload.quantity, holding.market)
 
 	if creates_adjustment:
+		assert effective_started_on is not None
 		symbol_transactions = list(
 			session.exec(
 				select(SecurityHoldingTransaction)
@@ -187,9 +189,9 @@ def update_holding(
 				.where(SecurityHoldingTransaction.symbol == holding.symbol)
 				.where(SecurityHoldingTransaction.market == holding.market)
 				.order_by(
-					SecurityHoldingTransaction.traded_on.asc(),
-					SecurityHoldingTransaction.created_at.asc(),
-					SecurityHoldingTransaction.id.asc(),
+					sql_expr(SecurityHoldingTransaction.traded_on).asc(),
+					sql_expr(SecurityHoldingTransaction.created_at).asc(),
+					sql_expr(SecurityHoldingTransaction.id).asc(),
 				),
 			),
 		)
@@ -382,9 +384,9 @@ def _list_holding_transactions_for_user(
 		select(SecurityHoldingTransaction)
 		.where(SecurityHoldingTransaction.user_id == user_id)
 		.order_by(
-			SecurityHoldingTransaction.traded_on.desc(),
-			SecurityHoldingTransaction.created_at.desc(),
-			SecurityHoldingTransaction.id.desc(),
+			sql_expr(SecurityHoldingTransaction.traded_on).desc(),
+			sql_expr(SecurityHoldingTransaction.created_at).desc(),
+			sql_expr(SecurityHoldingTransaction.id).desc(),
 		)
 		.limit(limit)
 	)
@@ -933,6 +935,16 @@ async def search_securities(
 	if not query:
 		return []
 
-	return await service_context.market_data_client.search_securities(query)
+	return [
+		SecuritySearchRead(
+			symbol=result.symbol,
+			name=result.name,
+			market=result.market,
+			currency=result.currency,
+			exchange=result.exchange,
+			source=result.source,
+		)
+		for result in await service_context.market_data_client.search_securities(query)
+	]
 
 __all__ = ['list_holdings', 'create_holding', 'update_holding', 'delete_holding', '_list_holding_transactions_for_user', 'list_all_holding_transactions', 'list_holding_transactions', 'create_holding_transaction', 'update_holding_transaction', 'delete_holding_transaction', 'get_security_quote', 'search_securities']

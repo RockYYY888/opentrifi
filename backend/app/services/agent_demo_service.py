@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import timedelta
+from decimal import Decimal
 
 from sqlmodel import Session, select
 from starlette.requests import Request
@@ -20,6 +21,7 @@ from app.services.auth_service import (
 )
 from app.services.cash_account_service import create_account
 from app.services import job_service
+from app.services.sql_expression import sql_expr
 
 DEMO_MARKER = "[agent-workspace-demo]"
 DEMO_ACTIVE_AGENT_NAME = "rebalancer-bot"
@@ -102,9 +104,9 @@ def _get_demo_cash_account(
 
 def _task_exists(session: Session, *, user_id: str, note_marker: str) -> bool:
 	return session.exec(
-		select(AgentTask.id)
-		.where(AgentTask.user_id == user_id)
-		.where(AgentTask.input_json.contains(note_marker)),
+			select(AgentTask.id)
+			.where(AgentTask.user_id == user_id)
+			.where(sql_expr(AgentTask.input_json).contains(note_marker)),
 	).first() is not None
 
 
@@ -148,10 +150,10 @@ def _ensure_support_account(
 
 	create_account(
 		CashAccountCreate(
-			name=DEMO_SUPPORT_ACCOUNT_NAME,
-			platform="Sandbox",
-			currency="CNY",
-			balance=240,
+				name=DEMO_SUPPORT_ACCOUNT_NAME,
+				platform="Sandbox",
+				currency="CNY",
+				balance=Decimal("240"),
 			account_type="BANK",
 			note=DEMO_SUPPORT_ACCOUNT_NOTE,
 		),
@@ -231,6 +233,8 @@ def _ensure_inactive_agent_registration(
 	)
 	if registration is not None:
 		registration.status = "INACTIVE"
+		if registration.last_seen_at is None:
+			registration.last_seen_at = registration.created_at
 		registration.last_seen_at = registration.last_seen_at - (
 			AGENT_REGISTRATION_ACTIVE_WINDOW + timedelta(minutes=1)
 		)
@@ -262,10 +266,10 @@ def _ensure_direct_api_account(
 		agent_user = _authenticate_with_agent_token(session, access_token=active_access_token)
 		create_account(
 			CashAccountCreate(
-				name=DEMO_DIRECT_ACCOUNT_NAME,
-				platform="Agent API",
-				currency="CNY",
-				balance=20,
+					name=DEMO_DIRECT_ACCOUNT_NAME,
+					platform="Agent API",
+					currency="CNY",
+					balance=Decimal("20"),
 				account_type="OTHER",
 				note=DEMO_DIRECT_ACCOUNT_NOTE,
 			),
@@ -326,20 +330,20 @@ def _resolve_demo_transfer_id(
 	user_id: str,
 ) -> int | None:
 	updated_transfer = session.exec(
-		select(CashTransfer)
-		.where(CashTransfer.user_id == user_id)
-		.where(CashTransfer.note == DEMO_UPDATE_TRANSFER_NOTE)
-		.order_by(CashTransfer.updated_at.desc(), CashTransfer.id.desc())
-	).first()
+			select(CashTransfer)
+			.where(CashTransfer.user_id == user_id)
+			.where(CashTransfer.note == DEMO_UPDATE_TRANSFER_NOTE)
+			.order_by(sql_expr(CashTransfer.updated_at).desc(), sql_expr(CashTransfer.id).desc())
+		).first()
 	if updated_transfer is not None:
 		return updated_transfer.id
 
 	created_transfer = session.exec(
-		select(CashTransfer)
-		.where(CashTransfer.user_id == user_id)
-		.where(CashTransfer.note == DEMO_CREATE_TRANSFER_NOTE)
-		.order_by(CashTransfer.updated_at.desc(), CashTransfer.id.desc())
-	).first()
+			select(CashTransfer)
+			.where(CashTransfer.user_id == user_id)
+			.where(CashTransfer.note == DEMO_CREATE_TRANSFER_NOTE)
+			.order_by(sql_expr(CashTransfer.updated_at).desc(), sql_expr(CashTransfer.id).desc())
+		).first()
 	return created_transfer.id if created_transfer is not None else None
 
 

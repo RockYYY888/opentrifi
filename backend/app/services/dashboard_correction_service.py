@@ -57,6 +57,7 @@ from app.services.portfolio_read_service import (
 )
 from app.services import service_context
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 def _to_dashboard_correction_read(correction: DashboardCorrection) -> DashboardCorrectionRead:
 	return DashboardCorrectionRead(
@@ -91,9 +92,12 @@ def _load_dashboard_correction_lookup(
 ) -> dict[tuple[str, str, str, datetime], DashboardCorrection]:
 	rows = list(
 		session.exec(
-			select(DashboardCorrection)
-			.where(DashboardCorrection.user_id == user_id)
-			.order_by(DashboardCorrection.bucket_utc.asc(), DashboardCorrection.updated_at.asc()),
+				select(DashboardCorrection)
+				.where(DashboardCorrection.user_id == user_id)
+				.order_by(
+					sql_expr(DashboardCorrection.bucket_utc).asc(),
+					sql_expr(DashboardCorrection.updated_at).asc(),
+				),
 		),
 	)
 	lookup: dict[tuple[str, str, str, datetime], DashboardCorrection] = {}
@@ -182,9 +186,12 @@ def list_dashboard_corrections(
 ) -> list[DashboardCorrectionRead]:
 	corrections = list(
 		session.exec(
-			select(DashboardCorrection)
-			.where(DashboardCorrection.user_id == current_user.username)
-			.order_by(DashboardCorrection.bucket_utc.desc(), DashboardCorrection.updated_at.desc()),
+				select(DashboardCorrection)
+				.where(DashboardCorrection.user_id == current_user.username)
+				.order_by(
+					sql_expr(DashboardCorrection.bucket_utc).desc(),
+					sql_expr(DashboardCorrection.updated_at).desc(),
+				),
 		),
 	)
 	return [_to_dashboard_correction_read(correction) for correction in corrections]

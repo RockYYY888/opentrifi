@@ -256,6 +256,7 @@ def _record_asset_mutation(
 
 def _touch_model(
 	model: AgentAccessToken
+	| AgentIdempotencyKey
 	| CashAccount
 	| CashLedgerEntry
 	| CashTransfer
@@ -350,9 +351,10 @@ async def _consume_global_force_refresh_slot() -> bool:
 		blocking_timeout=10,
 	):
 		now = utc_now()
+		last_force_refresh_at = runtime_state.get_last_global_force_refresh_at()
 		if (
-			runtime_state.get_last_global_force_refresh_at() is not None
-			and now - _coerce_utc_datetime(runtime_state.get_last_global_force_refresh_at())
+			last_force_refresh_at is not None
+			and now - _coerce_utc_datetime(last_force_refresh_at)
 			< GLOBAL_FORCE_REFRESH_INTERVAL
 		):
 			return False

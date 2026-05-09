@@ -46,6 +46,7 @@ from app.services.common_service import (
 	_normalize_currency,
 )
 from app.services.market_data import Quote, QuoteLookupError
+from app.services.sql_expression import sql_expr
 
 REALTIME_SERIES_RETENTION = timedelta(hours=1, minutes=5)
 REALTIME_SAMPLER_INTERVAL_SECONDS = 1.0
@@ -106,31 +107,35 @@ def _load_assets_for_all_users(
 	accounts = list(
 		session.exec(
 			select(CashAccount)
-			.order_by(CashAccount.user_id.asc(), CashAccount.id.asc()),
+			.order_by(sql_expr(CashAccount.user_id).asc(), sql_expr(CashAccount.id).asc()),
 		),
 	)
 	holdings = list(
 		session.exec(
 			select(SecurityHolding)
-			.order_by(SecurityHolding.user_id.asc(), SecurityHolding.symbol.asc(), SecurityHolding.id.asc()),
+			.order_by(
+				sql_expr(SecurityHolding.user_id).asc(),
+				sql_expr(SecurityHolding.symbol).asc(),
+				sql_expr(SecurityHolding.id).asc(),
+			),
 		),
 	)
 	fixed_assets = list(
 		session.exec(
 			select(FixedAsset)
-			.order_by(FixedAsset.user_id.asc(), FixedAsset.id.asc()),
+			.order_by(sql_expr(FixedAsset.user_id).asc(), sql_expr(FixedAsset.id).asc()),
 		),
 	)
 	liabilities = list(
 		session.exec(
 			select(LiabilityEntry)
-			.order_by(LiabilityEntry.user_id.asc(), LiabilityEntry.id.asc()),
+			.order_by(sql_expr(LiabilityEntry.user_id).asc(), sql_expr(LiabilityEntry.id).asc()),
 		),
 	)
 	other_assets = list(
 		session.exec(
 			select(OtherAsset)
-			.order_by(OtherAsset.user_id.asc(), OtherAsset.id.asc()),
+			.order_by(sql_expr(OtherAsset.user_id).asc(), sql_expr(OtherAsset.id).asc()),
 		),
 	)
 	accounts_by_user = _group_by_user_id(accounts, lambda item: item.user_id)
@@ -365,16 +370,16 @@ def _upsert_hourly_snapshots(
 
 	existing_portfolio_snapshots = {
 		snapshot.user_id: snapshot
-		for snapshot in session.exec(
-			select(PortfolioSnapshot)
-			.where(PortfolioSnapshot.user_id.in_(user_ids))
-			.where(PortfolioSnapshot.created_at == hour_bucket),
-		)
+			for snapshot in session.exec(
+				select(PortfolioSnapshot)
+				.where(sql_expr(PortfolioSnapshot.user_id).in_(user_ids))
+				.where(PortfolioSnapshot.created_at == hour_bucket),
+			)
 	}
 	existing_return_snapshots = defaultdict(list)
 	for snapshot in session.exec(
 		select(HoldingPerformanceSnapshot)
-		.where(HoldingPerformanceSnapshot.user_id.in_(user_ids))
+		.where(sql_expr(HoldingPerformanceSnapshot.user_id).in_(user_ids))
 		.where(HoldingPerformanceSnapshot.created_at == hour_bucket),
 	):
 		existing_return_snapshots[snapshot.user_id].append(snapshot)
@@ -460,16 +465,16 @@ def _upsert_realtime_snapshots(
 
 	existing_portfolio_snapshots = {
 		snapshot.user_id: snapshot
-		for snapshot in session.exec(
-			select(RealtimePortfolioSnapshot)
-			.where(RealtimePortfolioSnapshot.user_id.in_(user_ids))
-			.where(RealtimePortfolioSnapshot.created_at == second_bucket),
-		)
+			for snapshot in session.exec(
+				select(RealtimePortfolioSnapshot)
+				.where(sql_expr(RealtimePortfolioSnapshot.user_id).in_(user_ids))
+				.where(RealtimePortfolioSnapshot.created_at == second_bucket),
+			)
 	}
 	existing_return_snapshots = defaultdict(list)
 	for snapshot in session.exec(
 		select(RealtimeHoldingPerformanceSnapshot)
-		.where(RealtimeHoldingPerformanceSnapshot.user_id.in_(user_ids))
+		.where(sql_expr(RealtimeHoldingPerformanceSnapshot.user_id).in_(user_ids))
 		.where(RealtimeHoldingPerformanceSnapshot.created_at == second_bucket),
 	):
 		existing_return_snapshots[snapshot.user_id].append(snapshot)
@@ -550,11 +555,11 @@ def _purge_expired_realtime_snapshots(
 ) -> tuple[int, int]:
 	cutoff = _coerce_utc_datetime(now) - REALTIME_SERIES_RETENTION
 	portfolio_result = session.exec(
-		delete(RealtimePortfolioSnapshot).where(RealtimePortfolioSnapshot.created_at < cutoff),
+		delete(RealtimePortfolioSnapshot).where(sql_expr(RealtimePortfolioSnapshot.created_at) < cutoff),
 	)
 	return_result = session.exec(
 		delete(RealtimeHoldingPerformanceSnapshot).where(
-			RealtimeHoldingPerformanceSnapshot.created_at < cutoff,
+			sql_expr(RealtimeHoldingPerformanceSnapshot.created_at) < cutoff,
 		),
 	)
 	return int(portfolio_result.rowcount or 0), int(return_result.rowcount or 0)

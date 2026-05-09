@@ -38,6 +38,7 @@ from app.services.common_service import (
 from app.services.holding_projection_service import _to_holding_transaction_reads
 from app.services.holding_transaction_service import _list_holding_transactions_for_user
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 
 def _resolve_request_source(
@@ -134,7 +135,7 @@ def _list_active_api_key_names_by_user(
 	now_value = now or utc_now()
 	tokens = list(
 		session.exec(
-			select(AgentAccessToken).where(AgentAccessToken.user_id.in_(sorted(user_ids))),
+			select(AgentAccessToken).where(sql_expr(AgentAccessToken.user_id).in_(sorted(user_ids))),
 		),
 	)
 	active_names_by_user: dict[str, set[str]] = {}
@@ -199,9 +200,9 @@ def list_agent_tasks(
 ) -> list[AgentTaskRead]:
 	tasks = list(
 		session.exec(
-			select(AgentTask)
-			.where(AgentTask.user_id == current_user.username)
-			.order_by(AgentTask.created_at.desc(), AgentTask.id.desc())
+				select(AgentTask)
+				.where(AgentTask.user_id == current_user.username)
+				.order_by(sql_expr(AgentTask.created_at).desc(), sql_expr(AgentTask.id).desc())
 			.limit(limit),
 		),
 	)
@@ -222,12 +223,12 @@ def list_agent_registrations(
 
 	registrations = list(
 		session.exec(
-			statement
-			.where(AgentRegistration.request_count > 0)
-			.order_by(
-				AgentRegistration.updated_at.desc(),
-				AgentRegistration.id.desc(),
-			),
+				statement
+				.where(AgentRegistration.request_count > 0)
+				.order_by(
+					sql_expr(AgentRegistration.updated_at).desc(),
+					sql_expr(AgentRegistration.id).desc(),
+				),
 		),
 	)
 	now = utc_now()

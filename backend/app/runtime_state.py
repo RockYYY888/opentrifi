@@ -27,6 +27,7 @@ from app.typed_json import (
 	TypedJsonCodec,
 	expect_bool,
 	expect_decoded_type,
+	expect_int,
 	expect_json_list,
 	expect_json_object,
 	expect_string,
@@ -274,7 +275,10 @@ def _from_json_value(value: JsonValue) -> object:
 		)
 		return LoginAttemptState(
 			attempt_timestamps=attempt_timestamps,
-			consecutive_failed_attempts=int(value["consecutive_failed_attempts"]),
+			consecutive_failed_attempts=expect_int(
+				value["consecutive_failed_attempts"],
+				context="LoginAttemptState.consecutive_failed_attempts",
+			),
 			last_attempt_at=last_attempt_at,
 		)
 
@@ -427,8 +431,8 @@ def set_last_realtime_analytics_sampled_at(value: datetime | None) -> None:
 def redis_lock(
 	name: str,
 	*,
-	timeout: int = 30,
-	blocking_timeout: int = 30,
+	timeout: float = 30,
+	blocking_timeout: float = 30,
 ) -> Iterator[None]:
 	lock = redis_client.lock(
 		_runtime_lock_key(name),
@@ -451,8 +455,8 @@ def redis_lock(
 async def async_redis_lock(
 	name: str,
 	*,
-	timeout: int = 30,
-	blocking_timeout: int = 30,
+	timeout: float = 30,
+	blocking_timeout: float = 30,
 ) -> AsyncIterator[None]:
 	lock = redis_client.lock(
 		_runtime_lock_key(name),

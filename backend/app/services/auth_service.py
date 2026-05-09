@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 import hashlib
 import re
-from typing import Annotated
+from typing import Annotated, cast
 from zoneinfo import ZoneInfo
 
 from fastapi import Depends, HTTPException, Request
@@ -43,6 +43,7 @@ from app.security import (
 	verify_password,
 )
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 TokenDependency = Annotated[None, Depends(verify_api_token)]
 LOGIN_ATTEMPT_WINDOW = timedelta(minutes=1)
@@ -120,9 +121,9 @@ def _list_agent_access_tokens_for_user(
 ) -> list[AgentAccessToken]:
 	return list(
 		session.exec(
-			select(AgentAccessToken)
-			.where(AgentAccessToken.user_id == user_id)
-			.order_by(AgentAccessToken.created_at.desc(), AgentAccessToken.id.desc()),
+				select(AgentAccessToken)
+				.where(AgentAccessToken.user_id == user_id)
+				.order_by(sql_expr(AgentAccessToken.created_at).desc(), sql_expr(AgentAccessToken.id).desc()),
 		),
 	)
 
@@ -285,7 +286,8 @@ def _enforce_authenticated_request_rate_limit(
 	current_count = runtime_state.redis_client.incr(key)
 	if current_count == 1:
 		runtime_state.redis_client.expire(key, 2)
-	if current_count > AUTHENTICATED_REQUESTS_PER_SECOND:
+	current_count_value = cast(int, current_count)
+	if current_count_value > AUTHENTICATED_REQUESTS_PER_SECOND:
 		raise HTTPException(
 			status_code=429,
 			detail=f"同一账号每秒最多请求 {AUTHENTICATED_REQUESTS_PER_SECOND} 次，请稍后重试。",

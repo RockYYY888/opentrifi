@@ -39,6 +39,7 @@ from app.services.feedback_model_service import (
 from app.services.inbox_service import _load_hidden_message_ids
 from app.services.release_note_service import _ensure_release_note_deliveries_for_user
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 def submit_feedback(
 	payload: UserFeedbackCreate,
@@ -129,7 +130,7 @@ def submit_feedback(
 				UserFeedback.fingerprint == requested_fingerprint,
 				UserFeedback.created_at >= window_start,
 			)
-			.order_by(UserFeedback.created_at.desc(), UserFeedback.id.desc()),
+			.order_by(sql_expr(UserFeedback.created_at).desc(), sql_expr(UserFeedback.id).desc()),
 		).first()
 		if existing_feedback is not None:
 			existing_feedback.occurrence_count = max(1, existing_feedback.occurrence_count) + 1
@@ -181,7 +182,7 @@ def list_feedback_for_current_user(
 		session.exec(
 			select(UserFeedback)
 			.where(UserFeedback.user_id == current_user.username)
-			.order_by(UserFeedback.created_at.desc()),
+			.order_by(sql_expr(UserFeedback.created_at).desc()),
 		),
 	)
 	visible_feedback_items = [
@@ -203,8 +204,8 @@ def mark_feedback_seen_for_current_user(
 		session.exec(
 			select(UserFeedback).where(
 				UserFeedback.user_id == current_user.username,
-				UserFeedback.replied_at.is_not(None),
-				UserFeedback.reply_seen_at.is_(None),
+				sql_expr(UserFeedback.replied_at).is_not(None),
+				sql_expr(UserFeedback.reply_seen_at).is_(None),
 			),
 		),
 	)
@@ -243,17 +244,17 @@ def get_feedback_summary(
 			[
 				feedback_id
 				for feedback_id in session.exec(
-					select(UserFeedback.id).where(UserFeedback.resolved_at.is_(None)),
+					select(UserFeedback.id).where(sql_expr(UserFeedback.resolved_at).is_(None)),
 				)
-				if int(feedback_id) not in hidden_feedback_ids
+				if feedback_id is not None and int(feedback_id) not in hidden_feedback_ids
 			],
 		)
 		release_note_unread_count = 1 if any(
-			int(delivery_id) not in hidden_release_note_delivery_ids
+			delivery_id is not None and int(delivery_id) not in hidden_release_note_delivery_ids
 			for delivery_id in session.exec(
 				select(ReleaseNoteDelivery.id).where(
 					ReleaseNoteDelivery.user_id == current_user.username,
-					ReleaseNoteDelivery.seen_at.is_(None),
+					sql_expr(ReleaseNoteDelivery.seen_at).is_(None),
 				),
 			)
 		) else 0
@@ -274,19 +275,19 @@ def get_feedback_summary(
 			for feedback_id in session.exec(
 				select(UserFeedback.id).where(
 					UserFeedback.user_id == current_user.username,
-					UserFeedback.replied_at.is_not(None),
-					UserFeedback.reply_seen_at.is_(None),
+					sql_expr(UserFeedback.replied_at).is_not(None),
+					sql_expr(UserFeedback.reply_seen_at).is_(None),
 				),
 			)
-			if int(feedback_id) not in hidden_feedback_ids
+			if feedback_id is not None and int(feedback_id) not in hidden_feedback_ids
 		],
 	)
 	release_note_unread_count = 1 if any(
-		int(delivery_id) not in hidden_release_note_delivery_ids
+		delivery_id is not None and int(delivery_id) not in hidden_release_note_delivery_ids
 		for delivery_id in session.exec(
 			select(ReleaseNoteDelivery.id).where(
 				ReleaseNoteDelivery.user_id == current_user.username,
-				ReleaseNoteDelivery.seen_at.is_(None),
+				sql_expr(ReleaseNoteDelivery.seen_at).is_(None),
 			),
 		)
 	) else 0

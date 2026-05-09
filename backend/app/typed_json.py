@@ -119,6 +119,12 @@ def expect_bool(value: object, *, context: str = "value") -> bool:
 	return value
 
 
+def expect_int(value: object, *, context: str = "value") -> int:
+	if isinstance(value, bool) or not isinstance(value, int):
+		raise ValueError(f"{context} is not an integer.")
+	return value
+
+
 def expect_decoded_type(
 	value: object,
 	expected_type: type[DecodedType],

@@ -9,6 +9,7 @@ from app import runtime_state
 from app.fixed_precision import DECIMAL_ZERO, quantize_decimal
 from app.models import HOLDING_HISTORY_SYNC_STATUSES, HoldingHistorySyncRequest, utc_now
 from app.services.common_service import _current_hour_bucket
+from app.services.sql_expression import sql_expr
 
 def _enqueue_holding_history_sync_request(
 	session: Session,
@@ -22,9 +23,12 @@ def _enqueue_holding_history_sync_request(
 		blocking_timeout=10,
 	):
 		existing_request = session.exec(
-			select(HoldingHistorySyncRequest)
-			.where(HoldingHistorySyncRequest.user_id == user_id)
-			.order_by(HoldingHistorySyncRequest.requested_at.desc(), HoldingHistorySyncRequest.id.desc()),
+				select(HoldingHistorySyncRequest)
+				.where(HoldingHistorySyncRequest.user_id == user_id)
+				.order_by(
+					sql_expr(HoldingHistorySyncRequest.requested_at).desc(),
+					sql_expr(HoldingHistorySyncRequest.id).desc(),
+				),
 		).first()
 		now = utc_now()
 		if existing_request is None:
@@ -51,9 +55,9 @@ def _enqueue_holding_history_sync_request(
 
 def _has_holding_history_sync_pending(session: Session, user_id: str) -> bool:
 	request = session.exec(
-		select(HoldingHistorySyncRequest.id).where(
-			HoldingHistorySyncRequest.user_id == user_id,
-			HoldingHistorySyncRequest.status.in_(
+			select(HoldingHistorySyncRequest.id).where(
+				HoldingHistorySyncRequest.user_id == user_id,
+				sql_expr(HoldingHistorySyncRequest.status).in_(
 				(
 					HOLDING_HISTORY_SYNC_STATUSES[0],
 					HOLDING_HISTORY_SYNC_STATUSES[1],

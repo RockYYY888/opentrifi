@@ -70,6 +70,7 @@ from app.services.portfolio_read_service import (
 	_to_cash_transfer_read,
 )
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 
 def _delete_cash_account_related_transfers(
@@ -84,8 +85,8 @@ def _delete_cash_account_related_transfers(
 			.where(CashTransfer.user_id == current_user.username)
 			.where(
 				or_(
-					CashTransfer.from_account_id == (account.id or 0),
-					CashTransfer.to_account_id == (account.id or 0),
+					sql_expr(CashTransfer.from_account_id) == (account.id or 0),
+					sql_expr(CashTransfer.to_account_id) == (account.id or 0),
 				),
 			),
 		),
@@ -149,7 +150,7 @@ def list_asset_mutation_audits(
 	statement = (
 		select(AssetMutationAudit)
 		.where(AssetMutationAudit.user_id == current_user.username)
-		.order_by(AssetMutationAudit.created_at.desc())
+		.order_by(sql_expr(AssetMutationAudit.created_at).desc())
 		.limit(clamped_limit)
 	)
 	if agent_task_id is not None:
@@ -410,9 +411,9 @@ def list_cash_ledger_entries(
 		select(CashLedgerEntry)
 		.where(CashLedgerEntry.user_id == current_user.username)
 		.order_by(
-			CashLedgerEntry.happened_on.desc(),
-			CashLedgerEntry.created_at.desc(),
-			CashLedgerEntry.id.desc(),
+			sql_expr(CashLedgerEntry.happened_on).desc(),
+			sql_expr(CashLedgerEntry.created_at).desc(),
+			sql_expr(CashLedgerEntry.id).desc(),
 		)
 		.limit(limit)
 	)
@@ -619,9 +620,9 @@ def list_cash_transfers(
 			select(CashTransfer)
 			.where(CashTransfer.user_id == current_user.username)
 			.order_by(
-				CashTransfer.transferred_on.desc(),
-				CashTransfer.created_at.desc(),
-				CashTransfer.id.desc(),
+				sql_expr(CashTransfer.transferred_on).desc(),
+				sql_expr(CashTransfer.created_at).desc(),
+				sql_expr(CashTransfer.id).desc(),
 			)
 			.limit(limit),
 		),

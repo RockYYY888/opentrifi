@@ -18,6 +18,7 @@ from app.services.auth_service import CurrentUserDependency, TokenDependency
 from app.services.common_service import FEEDBACK_TIMEZONE, _require_admin_user
 from app.services.inbox_service import _load_hidden_message_ids
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 GITHUB_RELEASE_LABEL: Final[str] = "GitHub Release:"
 
@@ -98,16 +99,16 @@ def _list_published_release_notes_desc(session: Session) -> list[ReleaseNote]:
 	return list(
 		session.exec(
 			select(ReleaseNote)
-			.where(ReleaseNote.published_at.is_not(None))
-			.order_by(ReleaseNote.published_at.desc(), ReleaseNote.id.desc()),
+			.where(sql_expr(ReleaseNote.published_at).is_not(None))
+			.order_by(sql_expr(ReleaseNote.published_at).desc(), sql_expr(ReleaseNote.id).desc()),
 		),
 	)
 
 def _get_latest_published_release_note(session: Session) -> ReleaseNote | None:
 	return session.exec(
 		select(ReleaseNote)
-		.where(ReleaseNote.published_at.is_not(None))
-		.order_by(ReleaseNote.published_at.desc(), ReleaseNote.id.desc()),
+		.where(sql_expr(ReleaseNote.published_at).is_not(None))
+		.order_by(sql_expr(ReleaseNote.published_at).desc(), sql_expr(ReleaseNote.id).desc()),
 	).first()
 
 
@@ -182,7 +183,10 @@ def _upsert_release_note_stream_delivery(
 		session.exec(
 			select(ReleaseNoteDelivery)
 			.where(ReleaseNoteDelivery.user_id == user_id)
-			.order_by(ReleaseNoteDelivery.delivered_at.desc(), ReleaseNoteDelivery.id.desc()),
+			.order_by(
+				sql_expr(ReleaseNoteDelivery.delivered_at).desc(),
+				sql_expr(ReleaseNoteDelivery.id).desc(),
+			),
 		),
 	)
 
@@ -284,7 +288,7 @@ def list_release_notes_for_admin(
 	_require_admin_user(current_user)
 	release_notes = list(
 		session.exec(
-			select(ReleaseNote).order_by(ReleaseNote.created_at.desc()),
+			select(ReleaseNote).order_by(sql_expr(ReleaseNote.created_at).desc()),
 		),
 	)
 	return [_to_release_note_read(session, release_note) for release_note in release_notes]
@@ -396,12 +400,15 @@ def list_release_notes_for_current_user(
 	rows = list(
 		session.exec(
 		select(ReleaseNoteDelivery, ReleaseNote)
-		.join(ReleaseNote, ReleaseNote.id == ReleaseNoteDelivery.release_note_id)
+		.join(ReleaseNote, sql_expr(ReleaseNote.id) == ReleaseNoteDelivery.release_note_id)
 		.where(
 			ReleaseNoteDelivery.user_id == current_user.username,
-			ReleaseNote.published_at.is_not(None),
+			sql_expr(ReleaseNote.published_at).is_not(None),
 		)
-		.order_by(ReleaseNoteDelivery.delivered_at.desc(), ReleaseNoteDelivery.id.desc()),
+		.order_by(
+			sql_expr(ReleaseNoteDelivery.delivered_at).desc(),
+			sql_expr(ReleaseNoteDelivery.id).desc(),
+		),
 	),
 	)
 	if not rows:
@@ -443,7 +450,7 @@ def mark_release_notes_seen_for_current_user(
 		session.exec(
 			select(ReleaseNoteDelivery).where(
 				ReleaseNoteDelivery.user_id == current_user.username,
-				ReleaseNoteDelivery.seen_at.is_(None),
+				sql_expr(ReleaseNoteDelivery.seen_at).is_(None),
 			),
 		),
 	)

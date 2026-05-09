@@ -24,6 +24,7 @@ from app.services.holding_projection_service import (
 	_projected_holding_cost_basis,
 )
 from app.services.service_context import SessionDependency
+from app.services.sql_expression import sql_expr
 
 ASSET_RECORD_CLASSES = ("cash", "investment", "fixed", "liability", "other")
 ASSET_RECORD_OPERATIONS = ("NEW", "EDIT", "DELETE", "BUY", "SELL", "TRANSFER", "ADJUST")
@@ -515,11 +516,14 @@ def list_asset_records(
 	fetch_limit = min(max(clamped_limit * 12, 400), 5000)
 	candidate_audits = list(
 		session.exec(
-			select(AssetMutationAudit)
-			.where(AssetMutationAudit.user_id == current_user.username)
-			.where(AssetMutationAudit.entity_type.in_(CANONICAL_AUDIT_ENTITY_TYPES))
-			.order_by(AssetMutationAudit.created_at.desc(), AssetMutationAudit.id.desc())
-			.limit(fetch_limit),
+				select(AssetMutationAudit)
+				.where(AssetMutationAudit.user_id == current_user.username)
+				.where(sql_expr(AssetMutationAudit.entity_type).in_(CANONICAL_AUDIT_ENTITY_TYPES))
+				.order_by(
+					sql_expr(AssetMutationAudit.created_at).desc(),
+					sql_expr(AssetMutationAudit.id).desc(),
+				)
+				.limit(fetch_limit),
 		),
 	)
 	investment_profit_map = _resolve_investment_profit_map(list(reversed(candidate_audits)))

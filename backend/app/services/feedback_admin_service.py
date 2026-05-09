@@ -237,11 +237,11 @@ def classify_feedback_for_admin(
 	if feedback is None:
 		raise HTTPException(status_code=404, detail="反馈不存在。")
 
-	if "category" in payload.model_fields_set:
+	if "category" in payload.model_fields_set and payload.category is not None:
 		feedback.category = payload.category
-	if "priority" in payload.model_fields_set:
+	if "priority" in payload.model_fields_set and payload.priority is not None:
 		feedback.priority = payload.priority
-	if "source" in payload.model_fields_set:
+	if "source" in payload.model_fields_set and payload.source is not None:
 		feedback.source = payload.source
 	if "status" in payload.model_fields_set:
 		_apply_feedback_status_transition(

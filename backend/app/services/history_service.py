@@ -54,6 +54,7 @@ from app.services.holding_projection_service import (
 	_projected_holding_cost_basis,
 	_projected_holding_quantity,
 )
+from app.services.sql_expression import sql_expr
 
 
 def _backfill_missing_holding_transactions(session: Session, user_id: str) -> None:
@@ -61,7 +62,11 @@ def _backfill_missing_holding_transactions(session: Session, user_id: str) -> No
 		session.exec(
 			select(SecurityHolding)
 			.where(SecurityHolding.user_id == user_id)
-			.order_by(SecurityHolding.symbol.asc(), SecurityHolding.market.asc(), SecurityHolding.id.asc()),
+			.order_by(
+				sql_expr(SecurityHolding.symbol).asc(),
+				sql_expr(SecurityHolding.market).asc(),
+				sql_expr(SecurityHolding.id).asc(),
+			),
 		),
 	)
 	if not holdings:
@@ -101,19 +106,19 @@ async def _rebuild_user_holding_history_snapshots(session: Session, user_id: str
 			select(SecurityHoldingTransaction)
 			.where(SecurityHoldingTransaction.user_id == user_id)
 			.order_by(
-				SecurityHoldingTransaction.symbol,
-				SecurityHoldingTransaction.market,
-				SecurityHoldingTransaction.traded_on,
-				SecurityHoldingTransaction.created_at,
-				SecurityHoldingTransaction.id,
+				sql_expr(SecurityHoldingTransaction.symbol).asc(),
+				sql_expr(SecurityHoldingTransaction.market).asc(),
+				sql_expr(SecurityHoldingTransaction.traded_on).asc(),
+				sql_expr(SecurityHoldingTransaction.created_at).asc(),
+				sql_expr(SecurityHoldingTransaction.id).asc(),
 			),
 		),
 	)
 
 	session.exec(
 		delete(HoldingPerformanceSnapshot).where(
-			HoldingPerformanceSnapshot.user_id == user_id,
-			HoldingPerformanceSnapshot.scope.in_(("HOLDING", "TOTAL")),
+			sql_expr(HoldingPerformanceSnapshot.user_id) == user_id,
+			sql_expr(HoldingPerformanceSnapshot.scope).in_(("HOLDING", "TOTAL")),
 		),
 	)
 	session.commit()
@@ -287,7 +292,7 @@ async def _rebuild_user_portfolio_snapshots(session: Session, user_id: str) -> N
 		session.exec(
 			select(CashAccount)
 			.where(CashAccount.user_id == user_id)
-			.order_by(CashAccount.id.asc()),
+			.order_by(sql_expr(CashAccount.id).asc()),
 		),
 	)
 	ledger_entries = list(
@@ -295,9 +300,9 @@ async def _rebuild_user_portfolio_snapshots(session: Session, user_id: str) -> N
 			select(CashLedgerEntry)
 			.where(CashLedgerEntry.user_id == user_id)
 			.order_by(
-				CashLedgerEntry.happened_on.asc(),
-				CashLedgerEntry.created_at.asc(),
-				CashLedgerEntry.id.asc(),
+					sql_expr(CashLedgerEntry.happened_on).asc(),
+					sql_expr(CashLedgerEntry.created_at).asc(),
+					sql_expr(CashLedgerEntry.id).asc(),
 			),
 		),
 	)
@@ -306,11 +311,11 @@ async def _rebuild_user_portfolio_snapshots(session: Session, user_id: str) -> N
 			select(SecurityHoldingTransaction)
 			.where(SecurityHoldingTransaction.user_id == user_id)
 			.order_by(
-				SecurityHoldingTransaction.symbol,
-				SecurityHoldingTransaction.market,
-				SecurityHoldingTransaction.traded_on,
-				SecurityHoldingTransaction.created_at,
-				SecurityHoldingTransaction.id,
+				sql_expr(SecurityHoldingTransaction.symbol).asc(),
+				sql_expr(SecurityHoldingTransaction.market).asc(),
+				sql_expr(SecurityHoldingTransaction.traded_on).asc(),
+				sql_expr(SecurityHoldingTransaction.created_at).asc(),
+				sql_expr(SecurityHoldingTransaction.id).asc(),
 			),
 		),
 	)
@@ -318,21 +323,21 @@ async def _rebuild_user_portfolio_snapshots(session: Session, user_id: str) -> N
 		session.exec(
 			select(FixedAsset)
 			.where(FixedAsset.user_id == user_id)
-			.order_by(FixedAsset.id.asc()),
+			.order_by(sql_expr(FixedAsset.id).asc()),
 		),
 	)
 	liabilities = list(
 		session.exec(
 			select(LiabilityEntry)
 			.where(LiabilityEntry.user_id == user_id)
-			.order_by(LiabilityEntry.id.asc()),
+			.order_by(sql_expr(LiabilityEntry.id).asc()),
 		),
 	)
 	other_assets = list(
 		session.exec(
 			select(OtherAsset)
 			.where(OtherAsset.user_id == user_id)
-			.order_by(OtherAsset.id.asc()),
+			.order_by(sql_expr(OtherAsset.id).asc()),
 		),
 	)
 
@@ -367,12 +372,12 @@ async def _rebuild_user_portfolio_snapshots(session: Session, user_id: str) -> N
 		),
 	)
 	if not start_candidates:
-		session.exec(delete(PortfolioSnapshot).where(PortfolioSnapshot.user_id == user_id))
+		session.exec(delete(PortfolioSnapshot).where(sql_expr(PortfolioSnapshot.user_id) == user_id))
 		return
 
 	start_at = _date_start_utc(min(start_candidates))
 	if start_at > end_hour:
-		session.exec(delete(PortfolioSnapshot).where(PortfolioSnapshot.user_id == user_id))
+		session.exec(delete(PortfolioSnapshot).where(sql_expr(PortfolioSnapshot.user_id) == user_id))
 		return
 
 	hours = _build_hour_buckets(start_at, end_hour)
@@ -537,7 +542,7 @@ async def _rebuild_user_portfolio_snapshots(session: Session, user_id: str) -> N
 			),
 		)
 
-	session.exec(delete(PortfolioSnapshot).where(PortfolioSnapshot.user_id == user_id))
+	session.exec(delete(PortfolioSnapshot).where(sql_expr(PortfolioSnapshot.user_id) == user_id))
 	if rows:
 		session.add_all(rows)
 
@@ -555,7 +560,10 @@ def _claim_next_pending_holding_history_sync_request(
 	request_id_selector = (
 		select(HoldingHistorySyncRequest.id)
 		.where(HoldingHistorySyncRequest.status == HOLDING_HISTORY_SYNC_STATUSES[0])
-		.order_by(HoldingHistorySyncRequest.requested_at.asc(), HoldingHistorySyncRequest.id.asc())
+		.order_by(
+			sql_expr(HoldingHistorySyncRequest.requested_at).asc(),
+			sql_expr(HoldingHistorySyncRequest.id).asc(),
+		)
 		.limit(1)
 	)
 	if user_id is not None:
@@ -563,15 +571,15 @@ def _claim_next_pending_holding_history_sync_request(
 
 	request_id_row = session.exec(
 		update(HoldingHistorySyncRequest)
-		.where(HoldingHistorySyncRequest.id == request_id_selector.scalar_subquery())
-		.where(HoldingHistorySyncRequest.status == HOLDING_HISTORY_SYNC_STATUSES[0])
+		.where(sql_expr(HoldingHistorySyncRequest.id) == request_id_selector.scalar_subquery())
+		.where(sql_expr(HoldingHistorySyncRequest.status) == HOLDING_HISTORY_SYNC_STATUSES[0])
 		.values(
 			status=HOLDING_HISTORY_SYNC_STATUSES[1],
 			started_at=now,
 			completed_at=None,
 			error_message=None,
 		)
-		.returning(HoldingHistorySyncRequest.id),
+		.returning(sql_expr(HoldingHistorySyncRequest.id)),
 	).first()
 	if request_id_row is None:
 		session.rollback()
