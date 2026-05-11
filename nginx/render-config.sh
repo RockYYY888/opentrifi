@@ -28,9 +28,13 @@ server {
 		root /var/www/certbot;
 	}
 
-	location / {
+	location = / {
 		root /usr/share/nginx/placeholder;
 		try_files /index.html =404;
+	}
+
+	location / {
+		return 404;
 	}
 }
 EOF
@@ -83,11 +87,15 @@ server {
 	add_header X-Content-Type-Options "nosniff" always;
 	add_header X-Frame-Options "DENY" always;
 
-	location / {
+	location = / {
 		add_header Cache-Control "no-store" always;
 		add_header Pragma "no-cache" always;
 		root /usr/share/nginx/placeholder;
 		try_files /index.html =404;
+	}
+
+	location / {
+		return 404;
 	}
 }
 EOF
