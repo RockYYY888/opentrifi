@@ -4,6 +4,8 @@ map $http_x_forwarded_proto $asset_tracker_forwarded_proto {
 	~*^http$ http;
 }
 
+__ASSET_TRACKER_DEFAULT_HTTP_PLACEHOLDER_SERVER__
+
 server {
 	listen 80;
 	listen [::]:80;
@@ -19,6 +21,8 @@ server {
 }
 
 __ASSET_TRACKER_PLACEHOLDER_HTTP_SERVERS__
+
+__ASSET_TRACKER_DEFAULT_HTTPS_PLACEHOLDER_SERVER__
 
 server {
 	listen 443 ssl;

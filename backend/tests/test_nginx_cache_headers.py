@@ -40,9 +40,14 @@ def test_nginx_templates_support_reserved_placeholder_domains() -> None:
 	placeholder = _read("nginx/placeholder.html")
 
 	assert "ASSET_TRACKER_PLACEHOLDER_DOMAINS" in render_script
+	assert "ASSET_TRACKER_ENABLE_DEFAULT_PLACEHOLDER" in render_script
 	assert "build_placeholder_https_servers" in render_script
+	assert "build_default_https_placeholder_server" in render_script
 	assert "location = /" in render_script
 	assert "return 404;" in render_script
+	assert "__ASSET_TRACKER_DEFAULT_HTTP_PLACEHOLDER_SERVER__" in http_template
+	assert "__ASSET_TRACKER_DEFAULT_HTTP_PLACEHOLDER_SERVER__" in https_template
+	assert "__ASSET_TRACKER_DEFAULT_HTTPS_PLACEHOLDER_SERVER__" in https_template
 	assert "__ASSET_TRACKER_PLACEHOLDER_HTTP_SERVERS__" in http_template
 	assert "__ASSET_TRACKER_PLACEHOLDER_HTTP_SERVERS__" in https_template
 	assert "__ASSET_TRACKER_PLACEHOLDER_HTTPS_SERVERS__" in https_template

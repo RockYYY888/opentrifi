@@ -1,5 +1,7 @@
 server_tokens off;
 
+__ASSET_TRACKER_DEFAULT_HTTP_PLACEHOLDER_SERVER__
+
 map $http_x_forwarded_proto $asset_tracker_forwarded_proto {
 	default $scheme;
 	~*^https$ https;
