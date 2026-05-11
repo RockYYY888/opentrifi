@@ -142,3 +142,5 @@ server {
 		proxy_set_header X-Real-IP $remote_addr;
 	}
 }
+
+__ASSET_TRACKER_PLACEHOLDER_HTTP_SERVERS__

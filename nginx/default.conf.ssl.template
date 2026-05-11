@@ -18,6 +18,8 @@ server {
 	}
 }
 
+__ASSET_TRACKER_PLACEHOLDER_HTTP_SERVERS__
+
 server {
 	listen 443 ssl;
 	listen [::]:443 ssl;
@@ -157,3 +159,5 @@ server {
 		proxy_set_header X-Real-IP $remote_addr;
 	}
 }
+
+__ASSET_TRACKER_PLACEHOLDER_HTTPS_SERVERS__

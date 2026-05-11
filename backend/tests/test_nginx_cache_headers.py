@@ -31,3 +31,17 @@ def test_nginx_templates_serve_mobile_icon_fallbacks_without_404() -> None:
 		assert "location = /apple-touch-icon.png" in contents
 		assert "location = /apple-touch-icon-precomposed.png" in contents
 		assert "proxy_pass http://frontend:80/pwa-icon.svg;" in contents
+
+
+def test_nginx_templates_support_reserved_placeholder_domains() -> None:
+	render_script = _read("nginx/render-config.sh")
+	http_template = _read("nginx/default.conf.template")
+	https_template = _read("nginx/default.conf.ssl.template")
+	placeholder = _read("nginx/placeholder.html")
+
+	assert "ASSET_TRACKER_PLACEHOLDER_DOMAINS" in render_script
+	assert "build_placeholder_https_servers" in render_script
+	assert "__ASSET_TRACKER_PLACEHOLDER_HTTP_SERVERS__" in http_template
+	assert "__ASSET_TRACKER_PLACEHOLDER_HTTP_SERVERS__" in https_template
+	assert "__ASSET_TRACKER_PLACEHOLDER_HTTPS_SERVERS__" in https_template
+	assert "This domain is reserved for a future service" in placeholder
