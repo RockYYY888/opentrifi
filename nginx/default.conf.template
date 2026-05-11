@@ -9,7 +9,7 @@ map $http_x_forwarded_proto $asset_tracker_forwarded_proto {
 server {
 	listen 80;
 	listen [::]:80;
-	server_name __ASSET_TRACKER_DOMAIN__;
+	server_name __ASSET_TRACKER_SERVER_NAMES__;
 
 	gzip on;
 	gzip_comp_level 5;

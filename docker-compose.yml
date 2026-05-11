@@ -101,6 +101,7 @@ services:
         condition: service_started
     environment:
       ASSET_TRACKER_DOMAIN: ${ASSET_TRACKER_DOMAIN}
+      ASSET_TRACKER_EXTRA_DOMAINS: ${ASSET_TRACKER_EXTRA_DOMAINS:-}
     ports:
       - "80:80"
       - "443:443"

@@ -7,7 +7,7 @@ map $http_x_forwarded_proto $asset_tracker_forwarded_proto {
 server {
 	listen 80;
 	listen [::]:80;
-	server_name __ASSET_TRACKER_DOMAIN__;
+	server_name __ASSET_TRACKER_SERVER_NAMES__;
 
 	location ^~ /.well-known/acme-challenge/ {
 		root /var/www/certbot;
@@ -21,7 +21,7 @@ server {
 server {
 	listen 443 ssl;
 	listen [::]:443 ssl;
-	server_name __ASSET_TRACKER_DOMAIN__;
+	server_name __ASSET_TRACKER_SERVER_NAMES__;
 
 	ssl_certificate /etc/letsencrypt/live/__ASSET_TRACKER_DOMAIN__/fullchain.pem;
 	ssl_certificate_key /etc/letsencrypt/live/__ASSET_TRACKER_DOMAIN__/privkey.pem;
